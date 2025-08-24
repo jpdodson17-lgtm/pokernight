@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poker Night – Buy-ins, Cash-outs & Settlements</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --danger:#ef4444; --warn:#f59e0b; --line:#1f2937;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b1024, #0f172a);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial}
+  .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
+  .hero{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-weight:800;letter-spacing:.3px;margin:0;font-size:28px}
+  .card{background:rgba(17,24,39,.85);backdrop-filter:saturate(120%) blur(4px);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .grid{display:grid;gap:16px}
+  @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
+  input,button{font:inherit}
+  input[type="text"],input[type="number"]{
+    width:100%;padding:10px 12px;border-radius:12px;border:1px solid #243047;background:#0b1222;color:var(--text)
+  }
+  .row{display:flex;gap:10px}
+  .btn{padding:10px 14px;border:1px solid #2a3347;border-radius:12px;background:#0b1222;color:var(--text);cursor:pointer}
+  .btn:hover{background:#0f172a}
+  .btn.primary{border-color:#1f8a4b;background:#0d1f17}
+  .btn.red{border-color:#7a1f1f;background:#1a0f0f}
+  .btn.ghost{background:transparent}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #2a3347;color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  th,td{text-align:left;padding:10px 12px}
+  thead th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  tbody tr{background:#0b1222;border:1px solid #1f2937}
+  tbody tr td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
+  tbody tr td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+  .right{text-align:right}
+  .muted{color:var(--muted)}
+  .good{color:var(--accent)}
+  .bad{color:var(--danger)}
+  .warn{color:var(--warn)}
+  .section-title{margin:0 0 8px 0;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .totals{display:flex;gap:16px;flex-wrap:wrap}
+  .totals .chip{background:#0b1222;border:1px solid #2a3347;border-radius:12px;padding:10px 12px}
+  .footer{display:flex;gap:10px;flex-wrap:wrap}
+  .small{font-size:12px}
+  /* lock edits after End Game */
+  .locked [data-game-editable="true"] { opacity:.5; pointer-events:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>🃏 Poker Night Tracker</h1>
+    <div class="footer">
+      <button class="btn ghost" id="exportBtn">Export JSON</button>
+      <button class="btn ghost" id="importBtn">Import JSON</button>
+      <button class="btn primary" id="endBtn">End Game</button>
+      <button class="btn red" id="resetBtn">New Game</button>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <!-- Left column: Players -->
+    <div class="card">
+      <div class="section-title">Add player & buy-ins</div>
+      <div class="row" style="margin-bottom:12px">
+        <input id="playerName" type="text" placeholder="Player name (e.g., Mom, Alex, JP)" />
+        <input id="buyinAmount" type="number" step="0.01" placeholder="Buy-in (e.g., 20)" />
+        <button class="btn primary" id="addPlayerBtn" data-game-editable="true">Add / Add Buy-in</button>
+      </div>
+
+      <div class="section-title">Players</div>
+      <div class="totals" id="summaryChips"></div>
+
+      <div style="overflow:auto;margin-top:8px">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th class="right">Buy-ins</th>
+              <th class="right">Cash-out</th>
+              <th class="right">Net</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="playersTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right column: Settlement -->
+    <div class="card">
+      <div class="section-title">Settlement</div>
+      <div class="small muted" id="balanceWarn">Totals must balance (sum buy-ins = sum cash-outs) for perfect settlements.</div>
+      <div id="settlements" style="margin-top:10px"></div>
+      <hr style="border:0;border-top:1px solid #1f2937;margin:14px 0" />
+      <div class="section-title">Notes</div>
+      <div class="small muted">
+        • Click a player’s “+ Buy-in” to add more.<br/>
+        • Enter final <em>Cash-out</em> when chips are cashed.<br/>
+        • Use <b>Export JSON</b> to save a snapshot of the night.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const fmt = n => (isNaN(n)? '-' : '$' + n.toFixed(2));
+  const storeKey = 'poker_night_v1';
+
+  let state = load() || { players: [] };
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+
+  function save(){ localStorage.setItem(storeKey, JSON.stringify(state)); }
+  function load(){
+    try { return JSON.parse(localStorage.getItem(storeKey)); }
+    catch(e){ return null; }
+  }
+
+  function addOrBuyin(name, amount){
+    if(!name) return alert('Enter a player name.');
+    const amt = parseFloat(amount);
+    if(isNaN(amt) || amt <= 0) return alert('Enter a valid buy-in amount (> 0).');
+
+    let p = state.players.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if(!p){
+      p = { id: uid(), name: name.trim(), buyins: [], cashout: null };
+      state.players.push(p);
+    }
+    p.buyins.push(amt);
+    save(); render();
+  }
+
+  function addBuyinById(id){
+    const amt = prompt('Additional buy-in amount:');
+    if(amt === null) return;
+    const val = parseFloat(amt);
+    if(isNaN(val) || val <= 0) return alert('Enter a valid amount (> 0).');
+    const p = state.players.find(x => x.id === id);
+    if(!p) return;
+    p.buyins.push(val);
+    save(); render();
+  }
+
+  function setCashoutById(id){
+    const amt = prompt('Final cash-out amount (enter 0 if bust):');
+    if(amt === null) return;
+    const val = parseFloat(amt);
+    if(isNaN(val) || val < 0) return alert('Enter a valid amount (>= 0).');
+    const p = state.players.find(x => x.id === id);
+    if(!p) return;
+    p.cashout = val;
+    save(); render();
+  }
+
+  function removePlayer(id){
+    if(!confirm('Remove player?')) return;
+    state.players = state.players.filter(x => x.id !== id);
+    save(); render();
+  }
+
+  function totals(){
+    const buyins = state.players.reduce((s,p)=> s + p.buyins.reduce((a,b)=>a+b,0), 0);
+    const cashouts = state.players.reduce((s,p)=> s + (typeof p.cashout === 'number' ? p.cashout : 0), 0);
+    return { buyins, cashouts, diff: buyins - cashouts };
+  }
+
+  function computeNets(){
+    return state.players.map(p => {
+      const inSum = p.buyins.reduce((a,b)=>a+b,0);
+      const out = (typeof p.cashout === 'number') ? p.cashout : 0;
+      return { id:p.id, name:p.name, buyins:inSum, cashout:out, net: out - inSum };
+    });
+  }
+
+  // Greedy settlement: match debtors to creditors
+  function computeSettlements(){
+    const nets = computeNets();
+    const creditors = nets.filter(x => x.net > 0).map(x => ({...x}));
+    const debtors   = nets.filter(x => x.net < 0).map(x => ({...x}));
+    creditors.sort((a,b)=> b.net - a.net);
+    debtors.sort((a,b)=> a.net - b.net); // most negative first
+
+    const txns = [];
+    let i=0, j=0;
+    while(i < debtors.length && j < creditors.length){
+      const owe = Math.min(creditors[j].net, -debtors[i].net);
+      if(owe > 0.0001){
+        txns.push({ from: debtors[i].name, to: creditors[j].name, amount: owe });
+        creditors[j].net -= owe;
+        debtors[i].net += owe;
+      }
+      if(creditors[j].net <= 0.0001) j++;
+      if(debtors[i].net >= -0.0001) i++;
+    }
+    return txns;
+  }
+
+  function render(){
+    // Summary chips
+    const nets = computeNets();
+    const { buyins, cashouts, diff } = totals();
+    const sumEl = $('#summaryChips');
+    sumEl.innerHTML = `
+      <div class="chip">Total Buy-ins: <b>${fmt(buyins)}</b></div>
+      <div class="chip">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
+      <div class="chip">Difference: <b class="${Math.abs(diff)<0.01?'':'warn'}">${fmt(diff)}</b></div>
+    `;
+
+    // Players table
+    const tbody = $('#playersTbody');
+    tbody.innerHTML = nets.map(p => {
+      const netClass = p.net>0 ? 'good' : (p.net<0 ? 'bad' : '');
+      const buyinsList = state.players.find(x=>x.id===p.id)?.buyins || [];
+      const buyinsStr = buyinsList.length ? buyinsList.map(v=>fmt(v)).join(', ') : '—';
+      return `
+        <tr>
+          <td><b>${p.name}</b><div class="muted small">${buyinsList.length} buy-in(s)</div></td>
+          <td class="right">${buyinsStr}</td>
+          <td class="right">${typeof p.cashout==='number' ? fmt(p.cashout) : '<span class="muted">—</span>'}</td>
+          <td class="right"><b class="${netClass}">${fmt(p.net)}</b></td>
+          <td class="right">
+            <button class="btn" data-action="add" data-id="${p.id}" data-game-editable="true">+ Buy-in</button>
+            <button class="btn" data-action="cash" data-id="${p.id}" data-game-editable="true">Set Cash-out</button>
+            <button class="btn red" data-action="del" data-id="${p.id}" data-game-editable="true">Remove</button>
+          </td>
+        </tr>
+      `;
+    }).join('') || `<tr><td colspan="5" class="muted">No players yet. Add someone and a buy-in to start.</td></tr>`;
+
+    // Settlement
+    const txns = computeSettlements();
+    const balWarn = $('#balanceWarn');
+    const settlements = $('#settlements');
+
+    if (Math.abs(diff) > 0.009) {
+      balWarn.innerHTML = `⚠️ <b>Unbalanced by ${fmt(diff)}</b>. Check cash-outs or house chips. You can still use the suggested transfers below.`;
+      balWarn.classList.add('warn');
+    } else {
+      balWarn.textContent = 'Totals balanced. Suggested transfers settle everyone to $0.';
+      balWarn.classList.remove('warn');
+    }
+
+    if(!txns.length){
+      settlements.innerHTML = `<div class="muted small">No transfers suggested yet. Enter cash-outs to compute who owes whom.</div>`;
+    } else {
+      settlements.innerHTML = txns.map(t => `
+        <div class="chip" style="display:flex;justify-content:space-between;align-items:center">
+          <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
+          <div><b>${fmt(t.amount)}</b></div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // --- Buttons & Events ---
+
+  // Add / Add Buy-in
+  $('#addPlayerBtn').addEventListener('click', () => {
+    addOrBuyin($('#playerName').value.trim(), $('#buyinAmount').value);
+    $('#buyinAmount').value='';
+    $('#playerName').value='';
+    $('#playerName').focus();
+  });
+
+  // Row actions
+  $('#playersTbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button'); if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    const action = btn.getAttribute('data-action');
+    if(action==='add') addBuyinById(id);
+    if(action==='cash') setCashoutById(id);
+    if(action==='del') removePlayer(id);
+  });
+
+  // New Game
+  $('#resetBtn').addEventListener('click', () => {
+    if(!confirm('Start a new game? This clears current players and entries.')) return;
+    state = { players: [] }; save(); render();
+    document.body.classList.remove('locked');
+  });
+
+  // Export JSON
+  $('#exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'poker-night.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // Import JSON
+  $('#importBtn').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (data && Array.isArray(data.players)) {
+            state = data;
+            save();
+            render();
+            document.body.classList.remove('locked');
+            alert('Game imported successfully!');
+          } else {
+            alert('Invalid file format.');
+          }
+        } catch (err) {
+          alert('Error reading file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  });
+
+  // End Game: lock UI and show final settlement
+  $('#endBtn').addEventListener('click', () => {
+    if (!state.players.length) return alert('Add at least one player first.');
+
+    // Warn if anyone is missing a cash-out
+    const noCash = state.players.filter(p => typeof p.cashout !== 'number');
+    if (noCash.length) {
+      const names = noCash.map(p => p.name).join(', ');
+      const cont = confirm(`These players have no cash-out set: ${names}.\n\nContinue and settle anyway?`);
+      if (!cont) return;
+    }
+
+    // Compute totals and settlements
+    const { buyins, cashouts, diff } = totals();
+    const txns = computeSettlements();
+
+    // Render a final settlement header + list
+    const settlements = document.getElementById('settlements');
+    const balanced = Math.abs(diff) < 0.01;
+
+    const header = `
+      <div style="margin-bottom:8px">
+        <div class="pill">Total Buy-ins: <b>${fmt(buyins)}</b></div>
+        <div class="pill" style="margin-left:6px">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
+        <div class="pill" style="margin-left:6px">Difference: <b class="${balanced?'':'warn'}">${fmt(diff)}</b></div>
+      </div>
+      <h3 style="margin:6px 0 10px 0">Final Settlement</h3>
+      <div class="small muted" style="margin-bottom:8px">
+        ${balanced ? 'Totals balanced. Pay the amounts below to settle everyone to $0.' :
+                     'Unbalanced totals. Use the suggested transfers as guidance (there may be house chips/tips).'}
+      </div>
+    `;
+
+    if (!txns.length) {
+      settlements.innerHTML = header + `<div class="muted small">No transfers suggested. (Either everyone is even or cash-outs weren’t entered.)</div>`;
+    } else {
+      const list = txns.map(t =>
+        `<div class="chip" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+           <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
+           <div><b>${fmt(t.amount)}</b></div>
+         </div>`
+      ).join('');
+      settlements.innerHTML = header + list;
+    }
+
+    // Lock UI: disable edits for this game
+    document.body.classList.add('locked');
+
+    // Replace action buttons with a lock note
+    const tbody = document.getElementById('playersTbody');
+    tbody.querySelectorAll('td:last-child').forEach(td => td.innerHTML = '<span class="muted small">🔒 Game ended</span>');
+
+    alert('Game ended. Settlements are shown on the right.\nUse "New Game" to start another round.');
+  });
+
+  // First render
+  render();
+})();
+</script>
+</body>
+</html>
