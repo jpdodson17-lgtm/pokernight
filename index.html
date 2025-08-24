@@ -45,6 +45,22 @@
   .small{font-size:12px}
   /* lock edits after End Game */
   .locked [data-game-editable="true"] { opacity:.5; pointer-events:none; }
+
+  /* popup overlay */
+  #popup{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.8);z-index:9999;
+    animation: fadeIn .25s ease-out;
+  }
+  #popup .box{
+    background:#111827;color:#e5e7eb;padding:30px;border-radius:20px;text-align:center;
+    font-size:22px;max-width:560px;box-shadow:0 10px 30px rgba(0,0,0,.5);
+    animation: pop .25s ease-out;
+  }
+  #popup h2{margin:0 0 8px 0;font-size:28px}
+  #popup p{white-space:pre-line}
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes pop { from{transform:scale(.96)} to{transform:scale(1)} }
 </style>
 </head>
 <body>
@@ -101,6 +117,18 @@
         • Use <b>Export JSON</b> to save a snapshot of the night.
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Winner/Loser popup -->
+<div id="popup">
+  <div class="box">
+    <h2 id="popupTitle">🏆 Poker Night Results 🏆</h2>
+    <p id="popupMsg"></p>
+    <button onclick="document.getElementById('popup').style.display='none'"
+      class="btn" style="margin-top:16px;border:0;background:#0b1222;border-radius:12px;padding:10px 18px;">
+      Close
+    </button>
   </div>
 </div>
 
@@ -257,6 +285,13 @@
     }
   }
 
+  // --- Popup helper ---
+  function showPopup(title, msg) {
+    $('#popupTitle').innerText = title;
+    $('#popupMsg').innerText = msg;
+    $('#popup').style.display = 'flex';
+  }
+
   // --- Buttons & Events ---
 
   // Add / Add Buy-in
@@ -324,7 +359,7 @@
     input.click();
   });
 
-  // End Game: lock UI and show final settlement
+  // End Game: lock UI, show final settlement + fun popup
   $('#endBtn').addEventListener('click', () => {
     if (!state.players.length) return alert('Add at least one player first.');
 
@@ -369,14 +404,42 @@
       settlements.innerHTML = header + list;
     }
 
+    // Fun popup: biggest winner & loser
+    const nets = computeNets();
+    if (nets.length) {
+      const sorted = [...nets].sort((a,b)=> b.net - a.net);
+      const winner = sorted[0];
+      const loser = sorted[sorted.length-1];
+
+      if (winner && loser && (winner.net > 0 || loser.net < 0)) {
+        const funnyWinner = [
+          "Buy the next round, champ! 🍻",
+          "The cards bow down to you. 👑",
+          "You just funded snack night! 🥨",
+          "Tax bracket upgraded (temporarily). 💼"
+        ];
+        const funnyLoser = [
+          "Better luck next time… maybe stick to Go Fish 🐟",
+          "Ouch, the house loves you 💸",
+          "Your wallet left the chat 😬",
+          "Consider folding… the laundry. 🧺"
+        ];
+        const msg =
+`${winner.name} is the BIGGEST WINNER (+${fmt(winner.net)}).
+${funnyWinner[Math.floor(Math.random()*funnyWinner.length)]}
+
+${loser.name} is the BIGGEST LOSER (${fmt(loser.net)}).
+${funnyLoser[Math.floor(Math.random()*funnyLoser.length)]}`;
+        showPopup("🏆 Poker Night Results 🏆", msg);
+      }
+    }
+
     // Lock UI: disable edits for this game
     document.body.classList.add('locked');
 
     // Replace action buttons with a lock note
     const tbody = document.getElementById('playersTbody');
     tbody.querySelectorAll('td:last-child').forEach(td => td.innerHTML = '<span class="muted small">🔒 Game ended</span>');
-
-    alert('Game ended. Settlements are shown on the right.\nUse "New Game" to start another round.');
   });
 
   // First render
