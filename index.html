@@ -5,190 +5,303 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Poker Night – Buy-ins, Cash-outs & Settlements</title>
 <style>
+  /* ====== THEME: Poker Room ====== */
   :root{
-    --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --danger:#ef4444; --warn:#f59e0b; --line:#1f2937;
+    --felt:#0b7a3b;           /* table felt base */
+    --felt-dark:#065f31;      /* darker felt for depth */
+    --wood:#6b3e2e;           /* rail wood */
+    --wood-dark:#4e2c20;
+    --line:#1f2937;
+    --muted:#9fb7a6;
+    --text:#e8f5ec;
+    --text-dim:#cfe5d8;
+    --accent:#22c55e;
+    --danger:#ef4444;
+    --warn:#f59e0b;
+    --chip:#143a2a;           /* chip button base */
+    --chip-edge:#2b5d47;
+    --chip-glow:#39ff90;
   }
+
   *{box-sizing:border-box}
-  body{margin:0;background:linear-gradient(180deg,#0b1024, #0f172a);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial}
-  .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
-  .hero{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-  h1{font-weight:800;letter-spacing:.3px;margin:0;font-size:28px}
-  .card{background:rgba(17,24,39,.85);backdrop-filter:saturate(120%) blur(4px);border:1px solid var(--line);border-radius:16px;padding:16px}
+  html,body{height:100%}
+  body{
+    margin:0;
+    color:var(--text);
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    /* Poker room background: dark room with vignette */
+    background:
+      radial-gradient(1200px 700px at 70% -10%, rgba(57,255,144,.08), transparent 60%),
+      radial-gradient(1100px 600px at 20% 110%, rgba(57,255,144,.06), transparent 60%),
+      radial-gradient(1200px 900px at 50% 20%, rgba(0,0,0,.35), rgba(0,0,0,.85));
+  }
+
+  /* Center table */
+  .room{
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  /* Oval poker table with wood rail and felt */
+  .table-oval{
+    position:relative;
+    width:min(1100px, 96vw);
+    /* felt bed */
+    background:
+      radial-gradient(circle at 50% 40%, rgba(255,255,255,.06), transparent 55%),
+      radial-gradient(circle at 50% 65%, rgba(0,0,0,.25), transparent 60%),
+      radial-gradient(160% 120% at 50% 50%, var(--felt) 0%, var(--felt-dark) 70%);
+    padding:28px;
+    border-radius:999px / 600px;
+    box-shadow:
+      0 20px 60px rgba(0,0,0,.6),
+      inset 0 2px 0 rgba(255,255,255,.05),
+      inset 0 -6px 20px rgba(0,0,0,.4);
+    isolation:isolate;
+  }
+  /* Wood rail */
+  .table-oval::before{
+    content:"";
+    position:absolute; inset:-22px;
+    border-radius:999px / 620px;
+    background:
+      linear-gradient(145deg, var(--wood) 0%, var(--wood-dark) 60%),
+      radial-gradient(120% 100% at 50% 30%, rgba(255,255,255,.08), transparent 60%);
+    box-shadow:
+      0 25px 60px rgba(0,0,0,.7),
+      inset 0 6px 12px rgba(0,0,0,.45),
+      inset 0 -6px 14px rgba(255,255,255,.06);
+    z-index:-1;
+  }
+
+  /* Inner content area follows previous layout but visually “on felt” */
+  .wrap{max-width:980px;margin:0 auto}
+  .hero{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+  h1{margin:0;font-weight:900;letter-spacing:.3px;font-size:28px;display:flex;gap:10px;align-items:center}
+  .suits{opacity:.9;font-size:22px;letter-spacing:4px}
+  .suits span{filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+  .s-heart{color:#ff4d67} .s-diam{color:#ff7a59} .s-club{color:#9fdc95} .s-spade{color:#9cc7ff}
+
+  /* Cards on felt (panels) */
   .grid{display:grid;gap:16px}
-  @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
+  @media(min-width:900px){.grid{grid-template-columns:1.25fr .75fr}}
+
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:16px;
+    box-shadow:
+      0 10px 24px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.06),
+      inset 0 -2px 8px rgba(0,0,0,.25);
+    backdrop-filter:saturate(120%) blur(2px);
+  }
+
+  /* Inputs look like table inserts */
   input,button{font:inherit}
   input[type="text"],input[type="number"]{
-    width:100%;padding:10px 12px;border-radius:12px;border:1px solid #243047;background:#0b1222;color:var(--text)
+    width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.13);
+    background:rgba(0,0,0,.35);color:var(--text);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
   }
+
   .row{display:flex;gap:10px}
-  .btn{padding:10px 14px;border:1px solid #2a3347;border-radius:12px;background:#0b1222;color:var(--text);cursor:pointer}
-  .btn:hover{background:#0f172a}
-  .btn.primary{border-color:#1f8a4b;background:#0d1f17}
-  .btn.red{border-color:#7a1f1f;background:#1a0f0f}
+  .section-title{margin:0 0 8px 0;font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em}
+
+  /* Chip-style buttons */
+  .btn{
+    position:relative;
+    padding:10px 16px;border-radius:999px;border:1px solid var(--chip-edge);
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.06), rgba(0,0,0,.3)), var(--chip);
+    color:var(--text);
+    cursor:pointer;
+    box-shadow:
+      0 6px 14px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.06),
+      inset 0 -2px 6px rgba(0,0,0,.35);
+    transition:transform .08s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn:hover{transform:translateY(-1px); filter:drop-shadow(0 2px 4px rgba(57,255,144,.25))}
+  .btn.primary{background:
+      radial-gradient(circle at 25% 30%, rgba(57,255,144,.15), rgba(0,0,0,.25)),
+      linear-gradient(180deg,#145838,#0e3d28); border-color:#1c6b49}
+  .btn.red{background:linear-gradient(180deg,#5b1c1c,#3a1111); border-color:#7a1f1f}
   .btn.ghost{background:transparent}
-  .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #2a3347;color:var(--muted);font-size:12px}
-  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  .footer{display:flex;gap:10px;flex-wrap:wrap}
+
+  /* Totals “felt chips” */
+  .totals{display:flex;gap:10px;flex-wrap:wrap}
+  .totals .chip{
+    background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:10px 12px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 14px rgba(0,0,0,.25);
+  }
+
+  .muted{color:var(--text-dim)}
+  .good{color:var(--accent); text-shadow:0 0 8px rgba(57,255,144,.3)}
+  .bad{color:var(--danger)}
+  .warn{color:var(--warn)}
+
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
   th,td{text-align:left;padding:10px 12px}
-  thead th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-  tbody tr{background:#0b1222;border:1px solid #1f2937}
+  thead th{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
+  tbody tr{
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.35));
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 10px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05);
+  }
   tbody tr td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody tr td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
   .right{text-align:right}
-  .muted{color:var(--muted)}
-  .good{color:var(--accent)}
-  .bad{color:var(--danger)}
-  .warn{color:var(--warn)}
-  .section-title{margin:0 0 8px 0;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-  .totals{display:flex;gap:16px;flex-wrap:wrap}
-  .totals .chip{background:#0b1222;border:1px solid #2a3347;border-radius:12px;padding:10px 12px}
-  .footer{display:flex;gap:10px;flex-wrap:wrap}
-  .small{font-size:12px}
-  /* lock edits after End Game */
+
+  /* Lock state */
   .locked [data-game-editable="true"] { opacity:.5; pointer-events:none; }
 
-  /* popup overlay */
+  /* Winner popup (neon) */
   #popup{
     position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-    background:rgba(0,0,0,0.8);z-index:9999;
-    animation: fadeIn .25s ease-out;
+    background:rgba(0,0,0,.78);z-index:9999; animation:fadeIn .25s ease-out;
   }
   #popup .box{
-    background:#111827;color:#e5e7eb;padding:30px;border-radius:20px;text-align:center;
-    font-size:22px;max-width:560px;box-shadow:0 10px 30px rgba(0,0,0,.5);
-    animation: pop .25s ease-out;
+    background:linear-gradient(180deg, rgba(22,32,28,.95), rgba(10,24,18,.95));
+    border:1px solid rgba(57,255,144,.35);
+    color:var(--text);
+    padding:30px;border-radius:20px;text-align:center;
+    font-size:22px;max-width:620px;box-shadow:0 20px 60px rgba(0,0,0,.6), 0 0 30px rgba(57,255,144,.15);
+    animation:pop .2s ease-out;
   }
-  #popup h2{margin:0 0 8px 0;font-size:28px}
+  #popup h2{
+    margin:0 0 8px 0;font-size:30px;
+    text-shadow:0 0 8px rgba(57,255,144,.4), 0 0 18px rgba(57,255,144,.15);
+  }
   #popup p{white-space:pre-line}
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   @keyframes pop { from{transform:scale(.96)} to{transform:scale(1)} }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hero">
-    <h1>🃏 Poker Night Tracker</h1>
-    <div class="footer">
-      <button class="btn ghost" id="exportBtn">Export JSON</button>
-      <button class="btn ghost" id="importBtn">Import JSON</button>
-      <button class="btn primary" id="endBtn">End Game</button>
-      <button class="btn red" id="resetBtn">New Game</button>
+  <div class="room">
+    <div class="table-oval">
+      <div class="wrap">
+        <div class="hero">
+          <h1>
+            🃏 Poker Night
+            <span class="suits">
+              <span class="s-heart">♥</span>
+              <span class="s-diam">♦</span>
+              <span class="s-club">♣</span>
+              <span class="s-spade">♠</span>
+            </span>
+          </h1>
+          <div class="footer">
+            <button class="btn ghost" id="exportBtn">Export JSON</button>
+            <button class="btn ghost" id="importBtn">Import JSON</button>
+            <button class="btn primary" id="endBtn">End Game</button>
+            <button class="btn red" id="resetBtn">New Game</button>
+          </div>
+        </div>
+
+        <div class="grid">
+          <!-- Left column: Players -->
+          <div class="card">
+            <div class="section-title">Add player & buy-ins</div>
+            <div class="row" style="margin-bottom:12px">
+              <input id="playerName" type="text" placeholder="Player name (e.g., Mom, Alex, JP)" />
+              <input id="buyinAmount" type="number" step="0.01" placeholder="Buy-in (e.g., 20)" />
+              <button class="btn primary" id="addPlayerBtn" data-game-editable="true">Add / Add Buy-in</button>
+            </div>
+
+            <div class="section-title">Players</div>
+            <div class="totals" id="summaryChips"></div>
+
+            <div style="overflow:auto;margin-top:8px">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th class="right">Buy-ins</th>
+                    <th class="right">Cash-out</th>
+                    <th class="right">Net</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="playersTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right column: Settlement -->
+          <div class="card">
+            <div class="section-title">Settlement</div>
+            <div class="muted" id="balanceWarn">Totals must balance (sum buy-ins = sum cash-outs) for perfect settlements.</div>
+            <div id="settlements" style="margin-top:10px"></div>
+            <hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:14px 0" />
+            <div class="section-title">Notes</div>
+            <div class="muted" style="font-size:13px">
+              • Click a player’s “+ Buy-in” to add more.<br/>
+              • Enter final <em>Cash-out</em> when chips are cashed.<br/>
+              • Use <b>Export JSON</b> to save a snapshot of the night.
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="grid" style="margin-top:16px">
-    <!-- Left column: Players -->
-    <div class="card">
-      <div class="section-title">Add player & buy-ins</div>
-      <div class="row" style="margin-bottom:12px">
-        <input id="playerName" type="text" placeholder="Player name (e.g., Mom, Alex, JP)" />
-        <input id="buyinAmount" type="number" step="0.01" placeholder="Buy-in (e.g., 20)" />
-        <button class="btn primary" id="addPlayerBtn" data-game-editable="true">Add / Add Buy-in</button>
-      </div>
-
-      <div class="section-title">Players</div>
-      <div class="totals" id="summaryChips"></div>
-
-      <div style="overflow:auto;margin-top:8px">
-        <table>
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th class="right">Buy-ins</th>
-              <th class="right">Cash-out</th>
-              <th class="right">Net</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="playersTbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Right column: Settlement -->
-    <div class="card">
-      <div class="section-title">Settlement</div>
-      <div class="small muted" id="balanceWarn">Totals must balance (sum buy-ins = sum cash-outs) for perfect settlements.</div>
-      <div id="settlements" style="margin-top:10px"></div>
-      <hr style="border:0;border-top:1px solid #1f2937;margin:14px 0" />
-      <div class="section-title">Notes</div>
-      <div class="small muted">
-        • Click a player’s “+ Buy-in” to add more.<br/>
-        • Enter final <em>Cash-out</em> when chips are cashed.<br/>
-        • Use <b>Export JSON</b> to save a snapshot of the night.
-      </div>
+  <!-- Winner/Loser popup -->
+  <div id="popup">
+    <div class="box">
+      <h2 id="popupTitle">🏆 Poker Night Results 🏆</h2>
+      <p id="popupMsg"></p>
+      <button onclick="document.getElementById('popup').style.display='none'"
+        class="btn" style="margin-top:16px;border:1px solid var(--chip-edge);background:var(--chip);">
+        Close
+      </button>
     </div>
   </div>
-</div>
-
-<!-- Winner/Loser popup -->
-<div id="popup">
-  <div class="box">
-    <h2 id="popupTitle">🏆 Poker Night Results 🏆</h2>
-    <p id="popupMsg"></p>
-    <button onclick="document.getElementById('popup').style.display='none'"
-      class="btn" style="margin-top:16px;border:0;background:#0b1222;border-radius:12px;padding:10px 18px;">
-      Close
-    </button>
-  </div>
-</div>
 
 <script>
 (() => {
   const $ = sel => document.querySelector(sel);
-  const $$ = sel => Array.from(document.querySelectorAll(sel));
   const fmt = n => (isNaN(n)? '-' : '$' + n.toFixed(2));
   const storeKey = 'poker_night_v1';
 
   let state = load() || { players: [] };
 
   function uid(){ return Math.random().toString(36).slice(2,9); }
-
   function save(){ localStorage.setItem(storeKey, JSON.stringify(state)); }
-  function load(){
-    try { return JSON.parse(localStorage.getItem(storeKey)); }
-    catch(e){ return null; }
-  }
+  function load(){ try { return JSON.parse(localStorage.getItem(storeKey)); } catch(e){ return null; } }
 
   function addOrBuyin(name, amount){
     if(!name) return alert('Enter a player name.');
     const amt = parseFloat(amount);
     if(isNaN(amt) || amt <= 0) return alert('Enter a valid buy-in amount (> 0).');
-
     let p = state.players.find(x => x.name.toLowerCase() === name.toLowerCase());
-    if(!p){
-      p = { id: uid(), name: name.trim(), buyins: [], cashout: null };
-      state.players.push(p);
-    }
+    if(!p){ p = { id: uid(), name: name.trim(), buyins: [], cashout: null }; state.players.push(p); }
     p.buyins.push(amt);
     save(); render();
   }
-
   function addBuyinById(id){
-    const amt = prompt('Additional buy-in amount:');
-    if(amt === null) return;
-    const val = parseFloat(amt);
-    if(isNaN(val) || val <= 0) return alert('Enter a valid amount (> 0).');
-    const p = state.players.find(x => x.id === id);
-    if(!p) return;
-    p.buyins.push(val);
-    save(); render();
+    const amt = prompt('Additional buy-in amount:'); if(amt === null) return;
+    const val = parseFloat(amt); if(isNaN(val) || val <= 0) return alert('Enter a valid amount (> 0).');
+    const p = state.players.find(x => x.id === id); if(!p) return;
+    p.buyins.push(val); save(); render();
   }
-
   function setCashoutById(id){
-    const amt = prompt('Final cash-out amount (enter 0 if bust):');
-    if(amt === null) return;
-    const val = parseFloat(amt);
-    if(isNaN(val) || val < 0) return alert('Enter a valid amount (>= 0).');
-    const p = state.players.find(x => x.id === id);
-    if(!p) return;
-    p.cashout = val;
-    save(); render();
+    const amt = prompt('Final cash-out amount (enter 0 if bust):'); if(amt === null) return;
+    const val = parseFloat(amt); if(isNaN(val) || val < 0) return alert('Enter a valid amount (>= 0).');
+    const p = state.players.find(x => x.id === id); if(!p) return;
+    p.cashout = val; save(); render();
   }
-
   function removePlayer(id){
     if(!confirm('Remove player?')) return;
-    state.players = state.players.filter(x => x.id !== id);
-    save(); render();
+    state.players = state.players.filter(x => x.id !== id); save(); render();
   }
 
   function totals(){
@@ -211,8 +324,7 @@
     const creditors = nets.filter(x => x.net > 0).map(x => ({...x}));
     const debtors   = nets.filter(x => x.net < 0).map(x => ({...x}));
     creditors.sort((a,b)=> b.net - a.net);
-    debtors.sort((a,b)=> a.net - b.net); // most negative first
-
+    debtors.sort((a,b)=> a.net - b.net);
     const txns = [];
     let i=0, j=0;
     while(i < debtors.length && j < creditors.length){
@@ -229,11 +341,11 @@
   }
 
   function render(){
-    // Summary chips
     const nets = computeNets();
     const { buyins, cashouts, diff } = totals();
-    const sumEl = $('#summaryChips');
-    sumEl.innerHTML = `
+
+    // Totals
+    $('#summaryChips').innerHTML = `
       <div class="chip">Total Buy-ins: <b>${fmt(buyins)}</b></div>
       <div class="chip">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
       <div class="chip">Difference: <b class="${Math.abs(diff)<0.01?'':'warn'}">${fmt(diff)}</b></div>
@@ -247,7 +359,7 @@
       const buyinsStr = buyinsList.length ? buyinsList.map(v=>fmt(v)).join(', ') : '—';
       return `
         <tr>
-          <td><b>${p.name}</b><div class="muted small">${buyinsList.length} buy-in(s)</div></td>
+          <td><b>${p.name}</b><div class="muted" style="font-size:12px">${buyinsList.length} buy-in(s)</div></td>
           <td class="right">${buyinsStr}</td>
           <td class="right">${typeof p.cashout==='number' ? fmt(p.cashout) : '<span class="muted">—</span>'}</td>
           <td class="right"><b class="${netClass}">${fmt(p.net)}</b></td>
@@ -273,37 +385,32 @@
       balWarn.classList.remove('warn');
     }
 
-    if(!txns.length){
-      settlements.innerHTML = `<div class="muted small">No transfers suggested yet. Enter cash-outs to compute who owes whom.</div>`;
-    } else {
-      settlements.innerHTML = txns.map(t => `
-        <div class="chip" style="display:flex;justify-content:space-between;align-items:center">
-          <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
-          <div><b>${fmt(t.amount)}</b></div>
-        </div>
-      `).join('');
-    }
+    settlements.innerHTML = txns.length
+      ? txns.map(t => `
+          <div class="totals chip" style="justify-content:space-between;display:flex;align-items:center;margin-bottom:6px">
+            <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
+            <div><b>${fmt(t.amount)}</b></div>
+          </div>
+        `).join('')
+      : `<div class="muted" style="font-size:13px">No transfers suggested yet. Enter cash-outs to compute who owes whom.</div>`;
   }
 
-  // --- Popup helper ---
+  // Popup helper
   function showPopup(title, msg) {
-    $('#popupTitle').innerText = title;
-    $('#popupMsg').innerText = msg;
-    $('#popup').style.display = 'flex';
+    document.getElementById('popupTitle').innerText = title;
+    document.getElementById('popupMsg').innerText = msg;
+    document.getElementById('popup').style.display = 'flex';
   }
 
-  // --- Buttons & Events ---
-
-  // Add / Add Buy-in
-  $('#addPlayerBtn').addEventListener('click', () => {
-    addOrBuyin($('#playerName').value.trim(), $('#buyinAmount').value);
-    $('#buyinAmount').value='';
-    $('#playerName').value='';
-    $('#playerName').focus();
+  // Events
+  document.getElementById('addPlayerBtn').addEventListener('click', () => {
+    addOrBuyin(document.getElementById('playerName').value.trim(), document.getElementById('buyinAmount').value);
+    document.getElementById('buyinAmount').value='';
+    document.getElementById('playerName').value='';
+    document.getElementById('playerName').focus();
   });
 
-  // Row actions
-  $('#playersTbody').addEventListener('click', (e) => {
+  document.getElementById('playersTbody').addEventListener('click', (e) => {
     const btn = e.target.closest('button'); if(!btn) return;
     const id = btn.getAttribute('data-id');
     const action = btn.getAttribute('data-action');
@@ -312,15 +419,13 @@
     if(action==='del') removePlayer(id);
   });
 
-  // New Game
-  $('#resetBtn').addEventListener('click', () => {
+  document.getElementById('resetBtn').addEventListener('click', () => {
     if(!confirm('Start a new game? This clears current players and entries.')) return;
     state = { players: [] }; save(); render();
     document.body.classList.remove('locked');
   });
 
-  // Export JSON
-  $('#exportBtn').addEventListener('click', () => {
+  document.getElementById('exportBtn').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -329,41 +434,30 @@
     URL.revokeObjectURL(a.href);
   });
 
-  // Import JSON
-  $('#importBtn').addEventListener('click', () => {
+  document.getElementById('importBtn').addEventListener('click', () => {
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
+    input.type = 'file'; input.accept = '.json,application/json';
     input.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const file = e.target.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = evt => {
         try {
           const data = JSON.parse(evt.target.result);
           if (data && Array.isArray(data.players)) {
-            state = data;
-            save();
-            render();
+            state = data; save(); render();
             document.body.classList.remove('locked');
             alert('Game imported successfully!');
-          } else {
-            alert('Invalid file format.');
-          }
-        } catch (err) {
-          alert('Error reading file: ' + err.message);
-        }
+          } else { alert('Invalid file format.'); }
+        } catch (err) { alert('Error reading file: ' + err.message); }
       };
       reader.readAsText(file);
     };
     input.click();
   });
 
-  // End Game: lock UI, show final settlement + fun popup
-  $('#endBtn').addEventListener('click', () => {
+  // End Game
+  document.getElementById('endBtn').addEventListener('click', () => {
     if (!state.players.length) return alert('Add at least one player first.');
-
-    // Warn if anyone is missing a cash-out
     const noCash = state.players.filter(p => typeof p.cashout !== 'number');
     if (noCash.length) {
       const names = noCash.map(p => p.name).join(', ');
@@ -371,75 +465,63 @@
       if (!cont) return;
     }
 
-    // Compute totals and settlements
     const { buyins, cashouts, diff } = totals();
     const txns = computeSettlements();
 
-    // Render a final settlement header + list
+    // Settlement render
     const settlements = document.getElementById('settlements');
     const balanced = Math.abs(diff) < 0.01;
-
     const header = `
       <div style="margin-bottom:8px">
-        <div class="pill">Total Buy-ins: <b>${fmt(buyins)}</b></div>
-        <div class="pill" style="margin-left:6px">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
-        <div class="pill" style="margin-left:6px">Difference: <b class="${balanced?'':'warn'}">${fmt(diff)}</b></div>
+        <div class="totals chip">Total Buy-ins: <b>${fmt(buyins)}</b></div>
+        <div class="totals chip" style="margin-left:6px">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
+        <div class="totals chip" style="margin-left:6px">Difference: <b class="${balanced?'':'warn'}">${fmt(diff)}</b></div>
       </div>
       <h3 style="margin:6px 0 10px 0">Final Settlement</h3>
-      <div class="small muted" style="margin-bottom:8px">
+      <div class="muted" style="margin-bottom:8px">
         ${balanced ? 'Totals balanced. Pay the amounts below to settle everyone to $0.' :
                      'Unbalanced totals. Use the suggested transfers as guidance (there may be house chips/tips).'}
       </div>
     `;
+    settlements.innerHTML = header + (txns.length ? txns.map(t =>
+      `<div class="totals chip" style="justify-content:space-between;display:flex;align-items:center;margin-bottom:6px">
+         <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
+         <div><b>${fmt(t.amount)}</b></div>
+       </div>`).join('') : `<div class="muted" style="font-size:13px">No transfers suggested. (Either everyone is even or cash-outs weren’t entered.)</div>`);
 
-    if (!txns.length) {
-      settlements.innerHTML = header + `<div class="muted small">No transfers suggested. (Either everyone is even or cash-outs weren’t entered.)</div>`;
-    } else {
-      const list = txns.map(t =>
-        `<div class="chip" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-           <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
-           <div><b>${fmt(t.amount)}</b></div>
-         </div>`
-      ).join('');
-      settlements.innerHTML = header + list;
-    }
-
-    // Fun popup: biggest winner & loser
+    // Winner/Loser popup
     const nets = computeNets();
     if (nets.length) {
       const sorted = [...nets].sort((a,b)=> b.net - a.net);
       const winner = sorted[0];
       const loser = sorted[sorted.length-1];
 
-      if (winner && loser && (winner.net > 0 || loser.net < 0)) {
-        const funnyWinner = [
-          "Buy the next round, champ! 🍻",
-          "The cards bow down to you. 👑",
-          "You just funded snack night! 🥨",
-          "Tax bracket upgraded (temporarily). 💼"
-        ];
-        const funnyLoser = [
-          "Better luck next time… maybe stick to Go Fish 🐟",
-          "Ouch, the house loves you 💸",
-          "Your wallet left the chat 😬",
-          "Consider folding… the laundry. 🧺"
-        ];
-        const msg =
-`${winner.name} is the BIGGEST WINNER (+${fmt(winner.net)}).
-${funnyWinner[Math.floor(Math.random()*funnyWinner.length)]}
+      const funnyWinner = [
+        "Buy the next round, champ! 🍻",
+        "The cards bow down to you. 👑",
+        "You just funded snack night! 🥨",
+        "Tax bracket upgraded (temporarily). 💼"
+      ];
+      const funnyLoser = [
+        "Better luck next time… maybe stick to Go Fish 🐟",
+        "Ouch, the house loves you 💸",
+        "Your wallet left the chat 😬",
+        "Consider folding… the laundry. 🧺"
+      ];
 
-${loser.name} is the BIGGEST LOSER (${fmt(loser.net)}).
-${funnyLoser[Math.floor(Math.random()*funnyLoser.length)]}`;
-        showPopup("🏆 Poker Night Results 🏆", msg);
-      }
+      const wLine = winner ? `${winner.name} is the BIGGEST WINNER (+${fmt(winner.net||0)}).
+${funnyWinner[Math.floor(Math.random()*funnyWinner.length)]}` : "No winner detected.";
+      const lLine = loser ? `${loser.name} is the BIGGEST LOSER (${fmt(loser.net||0)}).
+${funnyLoser[Math.floor(Math.random()*funnyLoser.length)]}` : "No loser detected.";
+
+      showPopup("🏆 Poker Night Results 🏆", `${wLine}\n\n${lLine}`);
     }
 
-    // Lock UI: disable edits for this game
+    // Lock UI
     document.body.classList.add('locked');
-
-    // Replace action buttons with a lock note
-    const tbody = document.getElementById('playersTbody');
-    tbody.querySelectorAll('td:last-child').forEach(td => td.innerHTML = '<span class="muted small">🔒 Game ended</span>');
+    document.getElementById('playersTbody')
+      .querySelectorAll('td:last-child')
+      .forEach(td => td.innerHTML = '<span class="muted" style="font-size:12px">🔒 Game ended</span>');
   });
 
   // First render
