@@ -29,12 +29,10 @@
   tbody tr td:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
   tbody tr td:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
   .right{text-align:right}
-  /* Debug panel */
   #debug{position:fixed;left:10px;bottom:10px;max-width:420px;background:#0a0a0a;color:#e9eef5;
          border:1px solid #333;border-radius:10px;padding:8px 10px;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo;
          white-space:pre-wrap;opacity:.95;z-index:9999}
-  #debug b{color:#22c55e}
-  #debug .err{color:#ef4444}
+  #debug b{color:#22c55e} #debug .err{color:#ef4444}
 </style>
 </head>
 <body>
@@ -154,19 +152,15 @@ const fetchPlayers = safe(async () => {
   if (error) throw error;
   return data || [];
 });
-
 const addPlayer = safe(async (name) => {
   name = (name || '').trim();
-  if (!name) { alert('Enter a player name.'); return; }
+  if(!name) { alert('Enter a player name.'); return; }
   const { error } = await sb.from('players').insert({ name });
   if (error) throw error;
   $('#newPlayerName').value = '';
-  await renderPlayersBank();
-  await renderPlayersSelection();
-  await renderLifetime();
+  await renderPlayersBank(); await renderPlayersSelection(); await renderLifetime();
   dbg(`Added player: ${name}`);
 });
-
 const deletePlayerDB = safe(async (id) => {
   const { error } = await sb.from('players').delete().eq('id', id);
   if (error) throw error;
@@ -177,13 +171,11 @@ const fetchGames = safe(async () => {
   if (error) throw error;
   return data || [];
 });
-
 const createGameDB = safe(async (name) => {
   const { data, error } = await sb.from('games').insert({ name }).select().single();
   if (error) throw error;
   return data;
 });
-
 const getGameById = safe(async (id) => {
   const { data, error } = await sb.from('games').select('*').eq('id', id).single();
   if (error) throw error;
@@ -197,13 +189,11 @@ const fetchGamePlayers = safe(async (game_id) => {
   if (error) throw error;
   return data || [];
 });
-
 const insertGamePlayers = safe(async (rows) => {
   if (!rows.length) return;
   const { error } = await sb.from('game_players').insert(rows);
   if (error) throw error;
 });
-
 const deleteGamePlayers = safe(async (game_id, ids) => {
   if (!ids.length) return;
   const { error } = await sb.from('game_players').delete().eq('game_id', game_id).in('player_id', ids);
@@ -214,7 +204,6 @@ const insertBuyin = safe(async (game_id, player_id, amount) => {
   const { error } = await sb.from('buyins').insert({ game_id, player_id, amount });
   if (error) throw error;
 });
-
 const updateOrInsertCashout = safe(async (game_id, player_id, amount) => {
   const { data, error } = await sb.from('cashouts').update({ amount }).eq('game_id', game_id).eq('player_id', player_id).select();
   if (error) throw error;
@@ -334,8 +323,7 @@ const renderGame = safe(async ()=>{
       const n = Number(amt); if(!(n>0)) return alert('Enter a valid buy-in (> 0)');
       await insertBuyin(currentGame.id, btn.dataset.buyin, n);
       dbg(`+ Buy-in ${n} for player ${btn.dataset.buyin}`);
-      await renderGame();
-      await renderLifetime();
+      await renderGame(); await renderLifetime();
     });
   });
   $('#gamePlayersBody').querySelectorAll('button[data-cashout]').forEach(btn=>{
@@ -344,8 +332,7 @@ const renderGame = safe(async ()=>{
       const n = Number(amt); if(!(n>=0)) return alert('Enter a valid number (>= 0)');
       await updateOrInsertCashout(currentGame.id, btn.dataset.cashout, n);
       dbg(`Set cash-out ${n} for player ${btn.dataset.cashout}`);
-      await renderGame();
-      await renderLifetime();
+      await renderGame(); await renderLifetime();
     });
   });
 
@@ -372,9 +359,42 @@ const renderLifetime = safe(async ()=>{
   `).join('');
 });
 
-/*** UI EVENTS (attached after DOMContentLoaded) ***/
-document.addEventListener('DOMContentLoaded', () => {
+/*** ACTIONS ***/
+const deleteGame = safe(async (id) => {
+  if (!id) return;
+  if (!confirm("Delete this game and all related buy-ins/cash-outs?")) return;
+  await deleteGameDB(id);
+  currentGame = null;
+
+  // Refresh everything so UI and totals reflect the deletion
+  await Promise.all([
+    renderGamesDropdown(),
+    renderPlayersBank(),
+    renderLifetime()
+  ]);
+  await renderGame(); // this will toggle to noGamePane
+  dbg('Deleted game '+id);
+});
+
+const endGame = safe(async ()=>{
+  if(!currentGame) return;
+  const rows = await loadGameState(currentGame.id);
+  if(!rows.length){ alert('No players in this game.'); return; }
+  const sorted = [...rows].sort((a,b)=> b.net - a.net);
+  const w = sorted[0], l = sorted[sorted.length-1];
+  alert(`Winner: ${w.name} (+${fmt(w.net)})\nLoser: ${l.name} (${fmt(l.net)})`);
+});
+
+/*** EVENTS (attach after DOM loaded) ***/
+document.addEventListener('DOMContentLoaded', async () => {
   dbg('DOM ready.');
+
+  // Smoke test connection
+  try {
+    const { error } = await sb.from('players').select('id').limit(1);
+    if (error) throw error;
+    dbg('✅ Connected to Supabase.');
+  } catch (e) { dbg('Connection error: '+ (e.message || e), true); }
 
   $('#addPlayerBtn').addEventListener('click', ()=> addPlayer($('#newPlayerName').value));
   $('#createGameBtn').addEventListener('click', async ()=>{
@@ -412,22 +432,10 @@ document.addEventListener('DOMContentLoaded', () => {
     dbg('Applied player selection.');
   });
   $('#cancelPlayersBtn').addEventListener('click', ()=> $('#selectPlayersPane').classList.add('hidden'));
-  $('#endGameBtn').addEventListener('click', async ()=>{
-    if(!currentGame) return;
-    const rows = await loadGameState(currentGame.id);
-    if(!rows.length){ alert('No players in this game.'); return; }
-    const sorted = [...rows].sort((a,b)=> b.net - a.net);
-    const w = sorted[0], l = sorted[sorted.length-1];
-    alert(`Winner: ${w.name} (+${fmt(w.net)})\nLoser: ${l.name} (${fmt(l.net)})`);
-  });
+  $('#endGameBtn').addEventListener('click', endGame);
   $('#deleteGameBtn').addEventListener('click', async ()=>{
     if(!currentGame) return;
-    if(!confirm("Delete this game and all related buy-ins/cash-outs?")) return;
-    await deleteGameDB(currentGame.id);
-    currentGame = null;
-    await renderGamesDropdown();
-    await renderGame();
-    dbg('Deleted current game.');
+    await deleteGame(currentGame.id);
   });
   $('#newGameBtn').addEventListener('click', ()=>{
     currentGame = null;
@@ -441,20 +449,11 @@ document.addEventListener('DOMContentLoaded', () => {
     dbg('Manual refresh.');
   });
 
-  // Initial render
-  (async ()=>{
-    // smoke test query to prove connection works
-    try {
-      const { error } = await sb.from('players').select('id').limit(1);
-      if (error) throw error;
-      dbg('✅ Connected to Supabase.');
-    } catch (e) { dbg('Connection error: '+ (e.message || e), true); }
-    await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
-    await renderGame(); // nothing selected -> shows noGamePane
-  })();
+  await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
+  await renderGame(); // nothing selected -> shows noGamePane
 });
 
-/*** REALTIME (optional; harmless if publication not set) ***/
+/*** REALTIME (harmless if publication not set) ***/
 try{
   sb.channel('realtime:players')
    .on('postgres_changes', { event:'*', schema:'public', table:'players' }, async ()=>{
