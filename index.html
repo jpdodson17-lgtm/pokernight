@@ -3,529 +3,434 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Poker Night – Buy-ins, Cash-outs & Settlements</title>
+<title>Poker Tracker – Roster, Games, Lifetime</title>
+
+<!-- Supabase JS SDK -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
 <style>
-  /* ====== THEME: Poker Room ====== */
   :root{
-    --felt:#0b7a3b;           /* table felt base */
-    --felt-dark:#065f31;      /* darker felt for depth */
-    --wood:#6b3e2e;           /* rail wood */
-    --wood-dark:#4e2c20;
-    --line:#1f2937;
-    --muted:#9fb7a6;
-    --text:#e8f5ec;
-    --text-dim:#cfe5d8;
-    --accent:#22c55e;
-    --danger:#ef4444;
-    --warn:#f59e0b;
-    --chip:#143a2a;           /* chip button base */
-    --chip-edge:#2b5d47;
-    --chip-glow:#39ff90;
+    --bg:#0b1020; --card:#0f1a2a; --muted:#8aa0b8; --text:#e9eef5;
+    --accent:#22c55e; --danger:#ef4444; --warn:#f59e0b; --line:#1f2a3a;
   }
-
   *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    color:var(--text);
-    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial;
-    /* Poker room background: dark room with vignette */
-    background:
-      radial-gradient(1200px 700px at 70% -10%, rgba(57,255,144,.08), transparent 60%),
-      radial-gradient(1100px 600px at 20% 110%, rgba(57,255,144,.06), transparent 60%),
-      radial-gradient(1200px 900px at 50% 20%, rgba(0,0,0,.35), rgba(0,0,0,.85));
-  }
-
-  /* Center table */
-  .room{
-    min-height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:24px;
-  }
-
-  /* Oval poker table with wood rail and felt */
-  .table-oval{
-    position:relative;
-    width:min(1100px, 96vw);
-    /* felt bed */
-    background:
-      radial-gradient(circle at 50% 40%, rgba(255,255,255,.06), transparent 55%),
-      radial-gradient(circle at 50% 65%, rgba(0,0,0,.25), transparent 60%),
-      radial-gradient(160% 120% at 50% 50%, var(--felt) 0%, var(--felt-dark) 70%);
-    padding:28px;
-    border-radius:999px / 600px;
-    box-shadow:
-      0 20px 60px rgba(0,0,0,.6),
-      inset 0 2px 0 rgba(255,255,255,.05),
-      inset 0 -6px 20px rgba(0,0,0,.4);
-    isolation:isolate;
-  }
-  /* Wood rail */
-  .table-oval::before{
-    content:"";
-    position:absolute; inset:-22px;
-    border-radius:999px / 620px;
-    background:
-      linear-gradient(145deg, var(--wood) 0%, var(--wood-dark) 60%),
-      radial-gradient(120% 100% at 50% 30%, rgba(255,255,255,.08), transparent 60%);
-    box-shadow:
-      0 25px 60px rgba(0,0,0,.7),
-      inset 0 6px 12px rgba(0,0,0,.45),
-      inset 0 -6px 14px rgba(255,255,255,.06);
-    z-index:-1;
-  }
-
-  /* Inner content area follows previous layout but visually “on felt” */
-  .wrap{max-width:980px;margin:0 auto}
-  .hero{
-    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
-    margin-bottom:12px;
-  }
-  h1{margin:0;font-weight:900;letter-spacing:.3px;font-size:28px;display:flex;gap:10px;align-items:center}
-  .suits{opacity:.9;font-size:22px;letter-spacing:4px}
-  .suits span{filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
-  .s-heart{color:#ff4d67} .s-diam{color:#ff7a59} .s-club{color:#9fdc95} .s-spade{color:#9cc7ff}
-
-  /* Cards on felt (panels) */
+  body{margin:0;background:linear-gradient(180deg,#07121f,#0b1826);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  h1,h2,h3{margin:.2rem 0}
+  .wrap{max-width:1100px;margin:20px auto;padding:0 16px}
   .grid{display:grid;gap:16px}
-  @media(min-width:900px){.grid{grid-template-columns:1.25fr .75fr}}
-
-  .card{
-    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:18px;
-    padding:16px;
-    box-shadow:
-      0 10px 24px rgba(0,0,0,.35),
-      inset 0 1px 0 rgba(255,255,255,.06),
-      inset 0 -2px 8px rgba(0,0,0,.25);
-    backdrop-filter:saturate(120%) blur(2px);
-  }
-
-  /* Inputs look like table inserts */
-  input,button{font:inherit}
-  input[type="text"],input[type="number"]{
-    width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.13);
-    background:rgba(0,0,0,.35);color:var(--text);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
-  }
-
-  .row{display:flex;gap:10px}
-  .section-title{margin:0 0 8px 0;font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em}
-
-  /* Chip-style buttons */
-  .btn{
-    position:relative;
-    padding:10px 16px;border-radius:999px;border:1px solid var(--chip-edge);
-    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.06), rgba(0,0,0,.3)), var(--chip);
-    color:var(--text);
-    cursor:pointer;
-    box-shadow:
-      0 6px 14px rgba(0,0,0,.35),
-      inset 0 1px 0 rgba(255,255,255,.06),
-      inset 0 -2px 6px rgba(0,0,0,.35);
-    transition:transform .08s ease, box-shadow .15s ease, filter .15s ease;
-  }
-  .btn:hover{transform:translateY(-1px); filter:drop-shadow(0 2px 4px rgba(57,255,144,.25))}
-  .btn.primary{background:
-      radial-gradient(circle at 25% 30%, rgba(57,255,144,.15), rgba(0,0,0,.25)),
-      linear-gradient(180deg,#145838,#0e3d28); border-color:#1c6b49}
-  .btn.red{background:linear-gradient(180deg,#5b1c1c,#3a1111); border-color:#7a1f1f}
-  .btn.ghost{background:transparent}
-  .footer{display:flex;gap:10px;flex-wrap:wrap}
-
-  /* Totals “felt chips” */
-  .totals{display:flex;gap:10px;flex-wrap:wrap}
-  .totals .chip{
-    background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:10px 12px;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 14px rgba(0,0,0,.25);
-  }
-
-  .muted{color:var(--text-dim)}
-  .good{color:var(--accent); text-shadow:0 0 8px rgba(57,255,144,.3)}
-  .bad{color:var(--danger)}
-  .warn{color:var(--warn)}
-
-  table{width:100%;border-collapse:separate;border-spacing:0 10px}
-  th,td{text-align:left;padding:10px 12px}
-  thead th{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
-  tbody tr{
-    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.35));
-    border:1px solid rgba(255,255,255,.08);
-    box-shadow:0 10px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05);
-  }
-  tbody tr td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
-  tbody tr td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+  @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+  .card{background:rgba(15,26,42,.9);border:1px solid var(--line);border-radius:16px;padding:16px;backdrop-filter:saturate(120%) blur(4px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  input,button,select{font:inherit}
+  input[type="text"],input[type="number"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #203040;background:#0a1422;color:var(--text)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{padding:9px 12px;border-radius:10px;border:1px solid #26364a;background:#0a1422;color:var(--text);cursor:pointer}
+  .btn:hover{background:#0e1a2b}
+  .btn.primary{border-color:#1a6b3b;background:#0d2016}
+  .btn.red{border-color:#7a1f1f;background:#1a0f0f}
+  .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #2a3c52;color:var(--muted);font-size:12px;margin-right:6px}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  th,td{text-align:left;padding:8px 10px}
+  thead th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  tbody tr{background:#0a1422;border:1px solid #1b2a3a}
+  tbody tr td:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+  tbody tr td:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
   .right{text-align:right}
-
-  /* Lock state */
-  .locked [data-game-editable="true"] { opacity:.5; pointer-events:none; }
-
-  /* Winner popup (neon) */
-  #popup{
-    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.78);z-index:9999; animation:fadeIn .25s ease-out;
-  }
-  #popup .box{
-    background:linear-gradient(180deg, rgba(22,32,28,.95), rgba(10,24,18,.95));
-    border:1px solid rgba(57,255,144,.35);
-    color:var(--text);
-    padding:30px;border-radius:20px;text-align:center;
-    font-size:22px;max-width:620px;box-shadow:0 20px 60px rgba(0,0,0,.6), 0 0 30px rgba(57,255,144,.15);
-    animation:pop .2s ease-out;
-  }
-  #popup h2{
-    margin:0 0 8px 0;font-size:30px;
-    text-shadow:0 0 8px rgba(57,255,144,.4), 0 0 18px rgba(57,255,144,.15);
-  }
-  #popup p{white-space:pre-line}
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes pop { from{transform:scale(.96)} to{transform:scale(1)} }
+  .muted{color:var(--muted)}
+  .good{color:var(--accent)}
+  .bad{color:var(--danger)}
+  .section-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 6px 0}
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .hidden{display:none}
+  hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+  /* status badge */
+  #status{position:fixed;bottom:10px;left:10px;background:#0a1422;color:#e9eef5;border:1px solid #203040;border-radius:8px;padding:6px 10px;font:12px/1.2 system-ui;z-index:9999}
 </style>
 </head>
 <body>
-  <div class="room">
-    <div class="table-oval">
-      <div class="wrap">
-        <div class="hero">
-          <h1>
-            🃏 Poker Night
-            <span class="suits">
-              <span class="s-heart">♥</span>
-              <span class="s-diam">♦</span>
-              <span class="s-club">♣</span>
-              <span class="s-spade">♠</span>
-            </span>
-          </h1>
-          <div class="footer">
-            <button class="btn ghost" id="exportBtn">Export JSON</button>
-            <button class="btn ghost" id="importBtn">Import JSON</button>
-            <button class="btn primary" id="endBtn">End Game</button>
-            <button class="btn red" id="resetBtn">New Game</button>
+<div class="wrap">
+  <h1>🃏 Poker Tracker</h1>
+  <div class="grid">
+    <!-- Left: Players Bank & Lifetime -->
+    <div class="card">
+      <h2>Players Bank</h2>
+      <div class="row">
+        <input id="newPlayerName" type="text" placeholder="Add new player name…" />
+        <button class="btn primary" id="addPlayerBtn">Add Player</button>
+      </div>
+      <div class="stack" style="margin-top:10px">
+        <div class="section-title">All Players</div>
+        <table>
+          <thead><tr><th>Player</th><th class="right">Actions</th></tr></thead>
+          <tbody id="playersBankBody"></tbody>
+        </table>
+      </div>
+      <hr/>
+      <h2>Lifetime Leaderboard</h2>
+      <div class="chips" id="lifetimeSummary"></div>
+      <table style="margin-top:8px">
+        <thead><tr><th>Player</th><th class="right">Lifetime Net</th></tr></thead>
+        <tbody id="lifetimeBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Right: Game Controls -->
+    <div class="card">
+      <h2>Game Controls</h2>
+      <div id="noGamePane">
+        <div class="section-title">Create New Game</div>
+        <div class="row">
+          <input id="gameName" type="text" placeholder="Game name (e.g., Family Night 2025-08-29)" />
+          <button class="btn primary" id="createGameBtn">Create & Select Players</button>
+        </div>
+        <hr/>
+        <div class="section-title">Or Join Existing Game</div>
+        <div class="row">
+          <select id="existingGames" style="flex:1; padding:10px; border-radius:10px; background:#0a1422; color:var(--text); border:1px solid #203040"></select>
+          <button class="btn" id="joinGameBtn">Join</button>
+        </div>
+      </div>
+
+      <div id="gamePane" class="hidden">
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <h3 id="currentGameTitle">Game</h3>
+          <div>
+            <button class="btn" id="selectPlayersBtn">Select Players</button>
+            <button class="btn red" id="endGameBtn">End Game</button>
           </div>
         </div>
 
-        <div class="grid">
-          <!-- Left column: Players -->
-          <div class="card">
-            <div class="section-title">Add player & buy-ins</div>
-            <div class="row" style="margin-bottom:12px">
-              <input id="playerName" type="text" placeholder="Player name (e.g., Mom, Alex, JP)" />
-              <input id="buyinAmount" type="number" step="0.01" placeholder="Buy-in (e.g., 20)" />
-              <button class="btn primary" id="addPlayerBtn" data-game-editable="true">Add / Add Buy-in</button>
-            </div>
-
-            <div class="section-title">Players</div>
-            <div class="totals" id="summaryChips"></div>
-
-            <div style="overflow:auto;margin-top:8px">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th class="right">Buy-ins</th>
-                    <th class="right">Cash-out</th>
-                    <th class="right">Net</th>
-                    <th class="right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="playersTbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Right column: Settlement -->
-          <div class="card">
-            <div class="section-title">Settlement</div>
-            <div class="muted" id="balanceWarn">Totals must balance (sum buy-ins = sum cash-outs) for perfect settlements.</div>
-            <div id="settlements" style="margin-top:10px"></div>
-            <hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:14px 0" />
-            <div class="section-title">Notes</div>
-            <div class="muted" style="font-size:13px">
-              • Click a player’s “+ Buy-in” to add more.<br/>
-              • Enter final <em>Cash-out</em> when chips are cashed.<br/>
-              • Use <b>Export JSON</b> to save a snapshot of the night.
-            </div>
+        <div id="selectPlayersPane" class="hidden card" style="margin:10px 0">
+          <div class="section-title">Pick players for this game</div>
+          <div id="playersCheckboxes" class="stack"></div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn primary" id="applyPlayersBtn">Apply Selection</button>
+            <button class="btn" id="cancelPlayersBtn">Cancel</button>
           </div>
         </div>
+
+        <div class="section-title">Players in this Game</div>
+        <table>
+          <thead><tr><th>Player</th><th class="right">Buy-ins</th><th class="right">Cash-out</th><th class="right">Net</th><th class="right">Actions</th></tr></thead>
+          <tbody id="gamePlayersBody"></tbody>
+        </table>
+
+        <div class="section-title" style="margin-top:10px">Settlement</div>
+        <div id="settlements"></div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Winner/Loser popup -->
-  <div id="popup">
-    <div class="box">
-      <h2 id="popupTitle">🏆 Poker Night Results 🏆</h2>
-      <p id="popupMsg"></p>
-      <button onclick="document.getElementById('popup').style.display='none'"
-        class="btn" style="margin-top:16px;border:1px solid var(--chip-edge);background:var(--chip);">
-        Close
-      </button>
-    </div>
-  </div>
+<!-- connection status badge -->
+<div id="status">Checking Supabase…</div>
 
 <script>
-(() => {
-  const $ = sel => document.querySelector(sel);
-  const fmt = n => (isNaN(n)? '-' : '$' + n.toFixed(2));
-  const storeKey = 'poker_night_v1';
+/*** CONFIG — YOUR REAL VALUES ARE ALREADY INSERTED ***/
+const SUPABASE_URL  = "https://agyveiqcxcxkporhipcy.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFneXZlaXFjeGN4a3BvcmhpcGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0ODM3OTIsImV4cCI6MjA3MjA1OTc5Mn0.LUCAdM_f4L5oRHJYnjm6W34Tw23CzQ-nyfvTUk5hRWM";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  let state = load() || { players: [] };
+/*** STATE ***/
+let currentGame = null;  // {id, name}
 
-  function uid(){ return Math.random().toString(36).slice(2,9); }
-  function save(){ localStorage.setItem(storeKey, JSON.stringify(state)); }
-  function load(){ try { return JSON.parse(localStorage.getItem(storeKey)); } catch(e){ return null; } }
+/*** HELPERS ***/
+const $ = s => document.querySelector(s);
+const fmt = n => (isNaN(n) ? '-' : '$' + Number(n).toFixed(2));
 
-  function addOrBuyin(name, amount){
-    if(!name) return alert('Enter a player name.');
-    const amt = parseFloat(amount);
-    if(isNaN(amt) || amt <= 0) return alert('Enter a valid buy-in amount (> 0).');
-    let p = state.players.find(x => x.name.toLowerCase() === name.toLowerCase());
-    if(!p){ p = { id: uid(), name: name.trim(), buyins: [], cashout: null }; state.players.push(p); }
-    p.buyins.push(amt);
-    save(); render();
+/*** STARTUP STATUS CHECK ***/
+(async () => {
+  const status = $('#status');
+  try {
+    const { data, error } = await sb.from('players').select('id').limit(1);
+    if (error) throw error;
+    status.textContent = '✅ Connected to Supabase';
+  } catch (e) {
+    status.textContent = '❌ Supabase error: ' + (e?.message || e);
+    console.error(e);
   }
-  function addBuyinById(id){
-    const amt = prompt('Additional buy-in amount:'); if(amt === null) return;
-    const val = parseFloat(amt); if(isNaN(val) || val <= 0) return alert('Enter a valid amount (> 0).');
-    const p = state.players.find(x => x.id === id); if(!p) return;
-    p.buyins.push(val); save(); render();
-  }
-  function setCashoutById(id){
-    const amt = prompt('Final cash-out amount (enter 0 if bust):'); if(amt === null) return;
-    const val = parseFloat(amt); if(isNaN(val) || val < 0) return alert('Enter a valid amount (>= 0).');
-    const p = state.players.find(x => x.id === id); if(!p) return;
-    p.cashout = val; save(); render();
-  }
-  function removePlayer(id){
-    if(!confirm('Remove player?')) return;
-    state.players = state.players.filter(x => x.id !== id); save(); render();
-  }
+})();
 
-  function totals(){
-    const buyins = state.players.reduce((s,p)=> s + p.buyins.reduce((a,b)=>a+b,0), 0);
-    const cashouts = state.players.reduce((s,p)=> s + (typeof p.cashout === 'number' ? p.cashout : 0), 0);
-    return { buyins, cashouts, diff: buyins - cashouts };
+/*** PLAYERS BANK ***/
+async function fetchPlayers() {
+  const { data, error } = await sb.from('players').select('*').order('name');
+  if (error) { alert(error.message); return []; }
+  return data || [];
+}
+async function addPlayer(name){
+  console.log('addPlayer called with:', name);
+  name = (name || '').trim();
+  if(!name) { alert('Enter a player name.'); return; }
+  const { error } = await sb.from('players').insert({ name });
+  if (error) {
+    console.error('Insert error:', error);
+    alert('Supabase insert error: ' + error.message);
+    return;
   }
+  $('#newPlayerName').value = '';
+  renderPlayersBank();
+  renderPlayersSelection(); // update selection list if open
+  renderLifetime();
+}
+async function deletePlayer(id){
+  if(!confirm('Remove this player from bank?')) return;
+  const { error } = await sb.from('players').delete().eq('id', id);
+  if(error){ alert(error.message); return; }
+  renderPlayersBank();
+  renderPlayersSelection();
+  renderLifetime();
+}
+async function renderPlayersBank(){
+  const players = await fetchPlayers();
+  $('#playersBankBody').innerHTML = players.map(p=>`
+    <tr>
+      <td>${p.name}</td>
+      <td class="right">
+        <button class="btn red" onclick="deletePlayer('${p.id}')">Remove</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="2" class="muted">No players yet.</td></tr>`;
+}
 
-  function computeNets(){
-    return state.players.map(p => {
-      const inSum = p.buyins.reduce((a,b)=>a+b,0);
-      const out = (typeof p.cashout === 'number') ? p.cashout : 0;
-      return { id:p.id, name:p.name, buyins:inSum, cashout:out, net: out - inSum };
-    });
+/*** GAMES ***/
+async function fetchGames(){
+  const { data, error } = await sb.from('games').select('*').order('created_at', { ascending:false });
+  if(error){ alert(error.message); return []; }
+  return data || [];
+}
+async function createGame(name){
+  name = (name || '').trim();
+  if(!name) name = 'Poker Night ' + new Date().toLocaleString();
+  const { data, error } = await sb.from('games').insert({ name }).select().single();
+  if(error){ alert(error.message); return; }
+  currentGame = data;
+  $('#noGamePane').classList.add('hidden');
+  $('#gamePane').classList.remove('hidden');
+  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
+  await renderPlayersSelection(true);
+  $('#selectPlayersPane').classList.remove('hidden'); // open selection after creation
+  await renderGame();
+  await renderGamesDropdown();
+}
+async function renderGamesDropdown(){
+  const games = await fetchGames();
+  const sel = $('#existingGames');
+  sel.innerHTML = games.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+}
+async function joinGameById(id){
+  const { data, error } = await sb.from('games').select('*').eq('id', id).single();
+  if(error){ alert(error.message); return; }
+  currentGame = data;
+  $('#noGamePane').classList.add('hidden');
+  $('#gamePane').classList.remove('hidden');
+  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
+  await renderGame();
+}
+
+/*** GAME ROSTER SELECT ***/
+async function fetchGamePlayers(game_id){
+  const { data, error } = await sb.from('game_players')
+    .select('player_id, players(name)')
+    .eq('game_id', game_id).order('players(name)');
+  if(error){ alert(error.message); return []; }
+  return data || [];
+}
+async function renderPlayersSelection(open=false){
+  if(!currentGame) return;
+  const [bank, gp] = await Promise.all([fetchPlayers(), fetchGamePlayers(currentGame.id)]);
+  const selected = new Set(gp.map(r=>r.player_id));
+  $('#playersCheckboxes').innerHTML = bank.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" value="${p.id}" ${selected.has(p.id)?'checked':''}/>
+      <span>${p.name}</span>
+    </label>
+  `).join('') || `<div class="muted">No players in bank.</div>`;
+  if(open) $('#selectPlayersPane').classList.remove('hidden');
+}
+async function applyPlayersSelection(){
+  if(!currentGame) return;
+  const checks = Array.from($('#playersCheckboxes').querySelectorAll('input[type=checkbox]'));
+  const chosen = checks.filter(c=>c.checked).map(c=>c.value);
+  const current = await fetchGamePlayers(currentGame.id);
+  const have = new Set(current.map(r=>r.player_id));
+
+  const toAdd = chosen.filter(id=>!have.has(id)).map(player_id=>({ game_id: currentGame.id, player_id }));
+  if(toAdd.length){
+    const { error } = await sb.from('game_players').insert(toAdd);
+    if(error) alert(error.message);
   }
+  const toRemove = current.filter(r=>!chosen.includes(r.player_id)).map(r=>r.player_id);
+  if(toRemove.length){
+    const { error } = await sb.from('game_players').delete().eq('game_id', currentGame.id).in('player_id', toRemove);
+    if(error) alert(error.message);
+  }
+  $('#selectPlayersPane').classList.add('hidden');
+  await renderGame();
+}
 
-  // Greedy settlement: match debtors to creditors
-  function computeSettlements(){
-    const nets = computeNets();
-    const creditors = nets.filter(x => x.net > 0).map(x => ({...x}));
-    const debtors   = nets.filter(x => x.net < 0).map(x => ({...x}));
-    creditors.sort((a,b)=> b.net - a.net);
-    debtors.sort((a,b)=> a.net - b.net);
-    const txns = [];
-    let i=0, j=0;
-    while(i < debtors.length && j < creditors.length){
-      const owe = Math.min(creditors[j].net, -debtors[i].net);
-      if(owe > 0.0001){
-        txns.push({ from: debtors[i].name, to: creditors[j].name, amount: owe });
-        creditors[j].net -= owe;
-        debtors[i].net += owe;
-      }
-      if(creditors[j].net <= 0.0001) j++;
-      if(debtors[i].net >= -0.0001) i++;
+/*** GAME ACTIONS (buy-ins, cash-outs) ***/
+async function addBuyin(player_id, amount){
+  amount = Number(amount);
+  if(!(amount>0)) return alert('Enter a valid buy-in (> 0)');
+  const { error } = await sb.from('buyins').insert({ game_id: currentGame.id, player_id, amount });
+  if(error) alert(error.message);
+}
+async function setCashout(player_id){
+  const inp = prompt('Final cash-out amount (>= 0):'); if(inp===null) return;
+  const amount = Number(inp); if(!(amount>=0)) return alert('Enter a valid number (>= 0)');
+  const { data, error } = await sb.from('cashouts').update({ amount }).eq('game_id', currentGame.id).eq('player_id', player_id).select();
+  if(error) alert(error.message);
+  if(!data || data.length===0){
+    const { error: e2 } = await sb.from('cashouts').insert({ game_id: currentGame.id, player_id, amount });
+    if(e2) alert(e2.message);
+  }
+}
+
+/*** QUERIES FOR RENDER ***/
+async function loadGameState(game_id){
+  const { data: gp, error: e1 } = await sb.from('game_players')
+    .select('player_id, players(name)').eq('game_id', game_id);
+  if(e1){ alert(e1.message); return []; }
+  const ids = gp.map(r=>r.player_id);
+  if(ids.length === 0) return [];
+  const { data: bi, error: e2 } = await sb.from('buyins').select('*').eq('game_id', game_id).in('player_id', ids);
+  if(e2){ alert(e2.message); return []; }
+  const { data: co, error: e3 } = await sb.from('cashouts').select('*').eq('game_id', game_id).in('player_id', ids);
+  if(e3){ alert(e3.message); return []; }
+
+  const byPlayer = {};
+  for(const r of gp){ byPlayer[r.player_id] = { id:r.player_id, name:r.players.name, buyins:0, cashout:0, net:0 }; }
+  for(const b of bi){ byPlayer[b.player_id].buyins += Number(b.amount); }
+  for(const c of co){ byPlayer[c.player_id].cashout = Number(c.amount); }
+  for(const k in byPlayer){ const p = byPlayer[k]; p.net = p.cashout - p.buyins; }
+  return Object.values(byPlayer).sort((a,b)=> a.name.localeCompare(b.name));
+}
+
+async function renderGame(){
+  if(!currentGame){ $('#gamePane').classList.add('hidden'); $('#noGamePane').classList.remove('hidden'); return; }
+  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
+  const rows = await loadGameState(currentGame.id);
+  const tbody = $('#gamePlayersBody');
+  tbody.innerHTML = rows.map(p=>`
+    <tr>
+      <td>${p.name}</td>
+      <td class="right">${fmt(p.buyins)}</td>
+      <td class="right">${fmt(p.cashout)}</td>
+      <td class="right"><b class="${p.net>0?'good':(p.net<0?'bad':'')}">${fmt(p.net)}</b></td>
+      <td class="right">
+        <button class="btn" onclick="quickBuyin('${p.id}')">+ Buy-in</button>
+        <button class="btn" onclick="setCashout('${p.id}')">Set Cash-out</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" class="muted">No players selected yet. Click “Select Players”.</td></tr>`;
+
+  const txns = computeSettlements(rows);
+  $('#settlements').innerHTML = txns.length ? txns.map(t=>`
+    <div class="pill" style="display:flex;justify-content:space-between;gap:10px;min-width:240px">
+      <span>💸 <b>${t.from}</b> → <b>${t.to}</b></span>
+      <span><b>${fmt(t.amount)}</b></span>
+    </div>
+  `).join('') : `<div class="muted">Enter cash-outs to compute who owes whom.</div>`;
+}
+
+function computeSettlements(nets){
+  const creditors = nets.filter(x=>x.net>0).map(x=>({...x}));
+  const debtors = nets.filter(x=>x.net<0).map(x=>({...x}));
+  creditors.sort((a,b)=>b.net-a.net); debtors.sort((a,b)=>a.net-b.net);
+  const txns=[]; let i=0,j=0;
+  while(i<debtors.length && j<creditors.length){
+    const owe = Math.min(creditors[j].net, -debtors[i].net);
+    if(owe>0.0001){
+      txns.push({from: debtors[i].name, to: creditors[j].name, amount: owe});
+      creditors[j].net -= owe; debtors[i].net += owe;
     }
-    return txns;
+    if(creditors[j].net<=0.0001) j++;
+    if(debtors[i].net>=-0.0001) i++;
   }
+  return txns;
+}
 
-  function render(){
-    const nets = computeNets();
-    const { buyins, cashouts, diff } = totals();
+/*** LIFETIME LEADERBOARD ***/
+async function renderLifetime(){
+  const players = await fetchPlayers();
+  if(players.length===0){ $('#lifetimeBody').innerHTML = `<tr><td colspan="2" class="muted">No players yet.</td></tr>`; return; }
 
-    // Totals
-    $('#summaryChips').innerHTML = `
-      <div class="chip">Total Buy-ins: <b>${fmt(buyins)}</b></div>
-      <div class="chip">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
-      <div class="chip">Difference: <b class="${Math.abs(diff)<0.01?'':'warn'}">${fmt(diff)}</b></div>
-    `;
+  const { data: bi, error: e1 } = await sb.from('buyins').select('player_id, amount');
+  const { data: co, error: e2 } = await sb.from('cashouts').select('player_id, amount');
+  if(e1||e2){ alert((e1||e2).message); return; }
 
-    // Players table
-    const tbody = $('#playersTbody');
-    tbody.innerHTML = nets.map(p => {
-      const netClass = p.net>0 ? 'good' : (p.net<0 ? 'bad' : '');
-      const buyinsList = state.players.find(x=>x.id===p.id)?.buyins || [];
-      const buyinsStr = buyinsList.length ? buyinsList.map(v=>fmt(v)).join(', ') : '—';
-      return `
-        <tr>
-          <td><b>${p.name}</b><div class="muted" style="font-size:12px">${buyinsList.length} buy-in(s)</div></td>
-          <td class="right">${buyinsStr}</td>
-          <td class="right">${typeof p.cashout==='number' ? fmt(p.cashout) : '<span class="muted">—</span>'}</td>
-          <td class="right"><b class="${netClass}">${fmt(p.net)}</b></td>
-          <td class="right">
-            <button class="btn" data-action="add" data-id="${p.id}" data-game-editable="true">+ Buy-in</button>
-            <button class="btn" data-action="cash" data-id="${p.id}" data-game-editable="true">Set Cash-out</button>
-            <button class="btn red" data-action="del" data-id="${p.id}" data-game-editable="true">Remove</button>
-          </td>
-        </tr>
-      `;
-    }).join('') || `<tr><td colspan="5" class="muted">No players yet. Add someone and a buy-in to start.</td></tr>`;
+  const buy = {}; const cash = {};
+  (bi||[]).forEach(r => buy[r.player_id] = (buy[r.player_id]||0) + Number(r.amount));
+  (co||[]).forEach(r => cash[r.player_id] = (cash[r.player_id]||0) + Number(r.amount));
 
-    // Settlement
-    const txns = computeSettlements();
-    const balWarn = $('#balanceWarn');
-    const settlements = $('#settlements');
+  const rows = players.map(p=>{
+    const net = (cash[p.id]||0) - (buy[p.id]||0);
+    return { id:p.id, name:p.name, net };
+  }).sort((a,b)=> b.net - a.net);
 
-    if (Math.abs(diff) > 0.009) {
-      balWarn.innerHTML = `⚠️ <b>Unbalanced by ${fmt(diff)}</b>. Check cash-outs or house chips. You can still use the suggested transfers below.`;
-      balWarn.classList.add('warn');
-    } else {
-      balWarn.textContent = 'Totals balanced. Suggested transfers settle everyone to $0.';
-      balWarn.classList.remove('warn');
-    }
+  $('#lifetimeSummary').innerHTML = `
+    <span class="pill">Players: <b>${players.length}</b></span>
+    <span class="pill">All-time Leader: <b>${rows[0]?rows[0].name:'—'}</b></span>
+  `;
+  $('#lifetimeBody').innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.name}</td>
+      <td class="right"><b class="${r.net>0?'good':(r.net<0?'bad':'')}">${fmt(r.net)}</b></td>
+    </tr>
+  `).join('');
+}
 
-    settlements.innerHTML = txns.length
-      ? txns.map(t => `
-          <div class="totals chip" style="justify-content:space-between;display:flex;align-items:center;margin-bottom:6px">
-            <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
-            <div><b>${fmt(t.amount)}</b></div>
-          </div>
-        `).join('')
-      : `<div class="muted" style="font-size:13px">No transfers suggested yet. Enter cash-outs to compute who owes whom.</div>`;
-  }
+/*** UI EVENTS ***/
+$('#addPlayerBtn').addEventListener('click', ()=> addPlayer($('#newPlayerName').value));
+$('#createGameBtn').addEventListener('click', ()=> createGame($('#gameName').value));
+$('#joinGameBtn').addEventListener('click', ()=> {
+  const id = $('#existingGames').value; if(!id) return;
+  joinGameById(id);
+});
+$('#selectPlayersBtn').addEventListener('click', async ()=>{
+  await renderPlayersSelection(true);
+  $('#selectPlayersPane').classList.remove('hidden');
+});
+$('#applyPlayersBtn').addEventListener('click', applyPlayersSelection);
+$('#cancelPlayersBtn').addEventListener('click', ()=> $('#selectPlayersPane').classList.add('hidden'));
 
-  // Popup helper
-  function showPopup(title, msg) {
-    document.getElementById('popupTitle').innerText = title;
-    document.getElementById('popupMsg').innerText = msg;
-    document.getElementById('popup').style.display = 'flex';
-  }
+// Quick buy-in prompt
+window.quickBuyin = async function(player_id){
+  const amt = prompt('Buy-in amount (> 0):'); if(amt===null) return;
+  await addBuyin(player_id, Number(amt));
+}
 
-  // Events
-  document.getElementById('addPlayerBtn').addEventListener('click', () => {
-    addOrBuyin(document.getElementById('playerName').value.trim(), document.getElementById('buyinAmount').value);
-    document.getElementById('buyinAmount').value='';
-    document.getElementById('playerName').value='';
-    document.getElementById('playerName').focus();
-  });
+/*** END GAME ***/
+$('#endGameBtn').addEventListener('click', async ()=>{
+  if(!currentGame) return;
+  const rows = await loadGameState(currentGame.id);
+  if(!rows.length){ alert('No players in this game.'); return; }
+  const sorted = [...rows].sort((a,b)=> b.net - a.net);
+  const winner = sorted[0], loser = sorted[sorted.length-1];
+  alert(`Winner: ${winner.name} (+${fmt(winner.net)})\nLoser: ${loser.name} (${fmt(loser.net)})`);
+});
 
-  document.getElementById('playersTbody').addEventListener('click', (e) => {
-    const btn = e.target.closest('button'); if(!btn) return;
-    const id = btn.getAttribute('data-id');
-    const action = btn.getAttribute('data-action');
-    if(action==='add') addBuyinById(id);
-    if(action==='cash') setCashoutById(id);
-    if(action==='del') removePlayer(id);
-  });
+/*** REALTIME SUBSCRIPTIONS (live sync across devices) ***/
+sb.channel('realtime:players')
+ .on('postgres_changes', { event:'*', schema:'public', table:'players' }, ()=>{ renderPlayersBank(); renderPlayersSelection(); renderLifetime(); })
+ .subscribe();
 
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    if(!confirm('Start a new game? This clears current players and entries.')) return;
-    state = { players: [] }; save(); render();
-    document.body.classList.remove('locked');
-  });
+sb.channel('realtime:games')
+ .on('postgres_changes', { event:'*', schema:'public', table:'games' }, ()=>{ renderGamesDropdown(); })
+ .subscribe();
 
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'poker-night.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
+['game_players','buyins','cashouts'].forEach(t=>{
+  sb.channel('realtime:'+t)
+    .on('postgres_changes', { event:'*', schema:'public', table:t }, ()=>{
+      if(currentGame) renderGame();
+      renderLifetime();
+    })
+    .subscribe();
+});
 
-  document.getElementById('importBtn').addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.json,application/json';
-    input.onchange = e => {
-      const file = e.target.files[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = evt => {
-        try {
-          const data = JSON.parse(evt.target.result);
-          if (data && Array.isArray(data.players)) {
-            state = data; save(); render();
-            document.body.classList.remove('locked');
-            alert('Game imported successfully!');
-          } else { alert('Invalid file format.'); }
-        } catch (err) { alert('Error reading file: ' + err.message); }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  });
-
-  // End Game
-  document.getElementById('endBtn').addEventListener('click', () => {
-    if (!state.players.length) return alert('Add at least one player first.');
-    const noCash = state.players.filter(p => typeof p.cashout !== 'number');
-    if (noCash.length) {
-      const names = noCash.map(p => p.name).join(', ');
-      const cont = confirm(`These players have no cash-out set: ${names}.\n\nContinue and settle anyway?`);
-      if (!cont) return;
-    }
-
-    const { buyins, cashouts, diff } = totals();
-    const txns = computeSettlements();
-
-    // Settlement render
-    const settlements = document.getElementById('settlements');
-    const balanced = Math.abs(diff) < 0.01;
-    const header = `
-      <div style="margin-bottom:8px">
-        <div class="totals chip">Total Buy-ins: <b>${fmt(buyins)}</b></div>
-        <div class="totals chip" style="margin-left:6px">Total Cash-outs: <b>${fmt(cashouts)}</b></div>
-        <div class="totals chip" style="margin-left:6px">Difference: <b class="${balanced?'':'warn'}">${fmt(diff)}</b></div>
-      </div>
-      <h3 style="margin:6px 0 10px 0">Final Settlement</h3>
-      <div class="muted" style="margin-bottom:8px">
-        ${balanced ? 'Totals balanced. Pay the amounts below to settle everyone to $0.' :
-                     'Unbalanced totals. Use the suggested transfers as guidance (there may be house chips/tips).'}
-      </div>
-    `;
-    settlements.innerHTML = header + (txns.length ? txns.map(t =>
-      `<div class="totals chip" style="justify-content:space-between;display:flex;align-items:center;margin-bottom:6px">
-         <div>💸 <b>${t.from}</b> pays <b>${t.to}</b></div>
-         <div><b>${fmt(t.amount)}</b></div>
-       </div>`).join('') : `<div class="muted" style="font-size:13px">No transfers suggested. (Either everyone is even or cash-outs weren’t entered.)</div>`);
-
-    // Winner/Loser popup
-    const nets = computeNets();
-    if (nets.length) {
-      const sorted = [...nets].sort((a,b)=> b.net - a.net);
-      const winner = sorted[0];
-      const loser = sorted[sorted.length-1];
-
-      const funnyWinner = [
-        "Buy the next round, champ! 🍻",
-        "The cards bow down to you. 👑",
-        "You just funded snack night! 🥨",
-        "Tax bracket upgraded (temporarily). 💼"
-      ];
-      const funnyLoser = [
-        "Better luck next time… maybe stick to Go Fish 🐟",
-        "Ouch, the house loves you 💸",
-        "Your wallet left the chat 😬",
-        "Consider folding… the laundry. 🧺"
-      ];
-
-      const wLine = winner ? `${winner.name} is the BIGGEST WINNER (+${fmt(winner.net||0)}).
-${funnyWinner[Math.floor(Math.random()*funnyWinner.length)]}` : "No winner detected.";
-      const lLine = loser ? `${loser.name} is the BIGGEST LOSER (${fmt(loser.net||0)}).
-${funnyLoser[Math.floor(Math.random()*funnyLoser.length)]}` : "No loser detected.";
-
-      showPopup("🏆 Poker Night Results 🏆", `${wLine}\n\n${lLine}`);
-    }
-
-    // Lock UI
-    document.body.classList.add('locked');
-    document.getElementById('playersTbody')
-      .querySelectorAll('td:last-child')
-      .forEach(td => td.innerHTML = '<span class="muted" style="font-size:12px">🔒 Game ended</span>');
-  });
-
-  // First render
-  render();
+/*** INITIAL RENDER ***/
+(async function init(){
+  await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
 })();
 </script>
 </body>
