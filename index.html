@@ -4,47 +4,37 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Poker Tracker – Roster, Games, Lifetime</title>
-
-<!-- Supabase JS SDK -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
 <style>
   :root{
     --bg:#0b1020; --card:#0f1a2a; --muted:#8aa0b8; --text:#e9eef5;
-    --accent:#22c55e; --danger:#ef4444; --warn:#f59e0b; --line:#1f2a3a;
+    --accent:#22c55e; --danger:#ef4444; --line:#1f2a3a;
   }
   *{box-sizing:border-box}
   body{margin:0;background:linear-gradient(180deg,#07121f,#0b1826);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  h1,h2,h3{margin:.2rem 0}
   .wrap{max-width:1100px;margin:20px auto;padding:0 16px}
   .grid{display:grid;gap:16px}
   @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:rgba(15,26,42,.9);border:1px solid var(--line);border-radius:16px;padding:16px;backdrop-filter:saturate(120%) blur(4px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .card{background:#0f1a2a;border:1px solid #1f2a3a;border-radius:16px;padding:16px}
   input,button,select{font:inherit}
-  input[type="text"],input[type="number"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #203040;background:#0a1422;color:var(--text)}
+  input[type="text"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #203040;background:#0a1422;color:var(--text)}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .btn{padding:9px 12px;border-radius:10px;border:1px solid #26364a;background:#0a1422;color:var(--text);cursor:pointer}
   .btn:hover{background:#0e1a2b}
   .btn.primary{border-color:#1a6b3b;background:#0d2016}
-  .btn.red{border-color:#7a1f1f;background:#1a0f0f}
-  .btn.ghost{background:transparent}
-  .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #2a3c52;color:var(--muted);font-size:12px;margin-right:6px}
   table{width:100%;border-collapse:separate;border-spacing:0 8px}
-  th,td{text-align:left;padding:8px 10px}
-  thead th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  thead th{font-size:12px;color:#8aa0b8;text-transform:uppercase;letter-spacing:.08em;text-align:left}
+  td{padding:8px 10px} th{padding:4px 10px}
   tbody tr{background:#0a1422;border:1px solid #1b2a3a}
   tbody tr td:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
   tbody tr td:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
   .right{text-align:right}
-  .muted{color:var(--muted)}
-  .good{color:var(--accent)}
-  .bad{color:var(--danger)}
-  .section-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 6px 0}
-  .stack{display:flex;flex-direction:column;gap:10px}
-  .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .hidden{display:none}
-  hr{border:0;border-top:1px solid var(--line);margin:10px 0}
-  #status{position:fixed;bottom:10px;left:10px;background:#0a1422;color:#e9eef5;border:1px solid #203040;border-radius:8px;padding:6px 10px;font:12px/1.2 system-ui;z-index:9999}
+  /* Debug panel */
+  #debug{position:fixed;left:10px;bottom:10px;max-width:420px;background:#0a0a0a;color:#e9eef5;
+         border:1px solid #333;border-radius:10px;padding:8px 10px;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo;
+         white-space:pre-wrap;opacity:.95;z-index:9999}
+  #debug b{color:#22c55e}
+  #debug .err{color:#ef4444}
 </style>
 </head>
 <body>
@@ -58,42 +48,35 @@
   </div>
 
   <div class="grid">
-    <!-- Left: Players Bank & Lifetime -->
     <div class="card">
       <h2>Players Bank</h2>
       <div class="row">
         <input id="newPlayerName" type="text" placeholder="Add new player name…" />
         <button class="btn primary" id="addPlayerBtn">Add Player</button>
       </div>
-      <div class="stack" style="margin-top:10px">
-        <div class="section-title">All Players</div>
+      <div style="margin-top:10px">
         <table>
           <thead><tr><th>Player</th><th class="right">Actions</th></tr></thead>
           <tbody id="playersBankBody"></tbody>
         </table>
       </div>
-      <hr/>
+      <hr style="border:0;border-top:1px solid #1f2a3a;margin:10px 0"/>
       <h2>Lifetime Leaderboard</h2>
-      <div class="chips" id="lifetimeSummary"></div>
-      <table style="margin-top:8px">
+      <table>
         <thead><tr><th>Player</th><th class="right">Lifetime Net</th></tr></thead>
         <tbody id="lifetimeBody"></tbody>
       </table>
     </div>
 
-    <!-- Right: Game Controls -->
     <div class="card">
       <h2>Game Controls</h2>
       <div id="noGamePane">
-        <div class="section-title">Create New Game</div>
         <div class="row">
-          <input id="gameName" type="text" placeholder="Game name (e.g., Family Night 2025-08-29)" />
+          <input id="gameName" type="text" placeholder="Game name (e.g., Family Night)" />
           <button class="btn primary" id="createGameBtn">Create & Select Players</button>
         </div>
-        <hr/>
-        <div class="section-title">Or Join Existing Game</div>
-        <div class="row">
-          <select id="existingGames" style="flex:1; padding:10px; border-radius:10px; background:#0a1422; color:#fff; border:1px solid #203040"></select>
+        <div class="row" style="margin-top:10px">
+          <select id="existingGames" style="flex:1; padding:10px; border-radius:10px; background:#0a1422; color:#e9eef5; border:1px solid #203040"></select>
           <button class="btn" id="joinGameBtn">Join</button>
         </div>
       </div>
@@ -103,149 +86,195 @@
           <h3 id="currentGameTitle">Game</h3>
           <div class="row">
             <button class="btn" id="selectPlayersBtn">Select Players</button>
-            <button class="btn red" id="endGameBtn">End Game</button>
-            <button class="btn red" id="deleteGameBtn">Delete Game</button>
+            <button class="btn" id="endGameBtn">End Game</button>
+            <button class="btn" id="deleteGameBtn">Delete Game</button>
           </div>
         </div>
 
         <div id="selectPlayersPane" class="hidden card" style="margin:10px 0">
-          <div class="section-title">Pick players for this game</div>
-          <div id="playersCheckboxes" class="stack"></div>
+          <div>Pick players for this game</div>
+          <div id="playersCheckboxes" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
           <div class="row" style="margin-top:8px">
             <button class="btn primary" id="applyPlayersBtn">Apply Selection</button>
             <button class="btn" id="cancelPlayersBtn">Cancel</button>
           </div>
         </div>
 
-        <div class="section-title">Players in this Game</div>
+        <div style="margin-top:8px">Players in this Game</div>
         <table>
           <thead><tr><th>Player</th><th class="right">Buy-ins</th><th class="right">Cash-out</th><th class="right">Net</th><th class="right">Actions</th></tr></thead>
-        <tbody id="gamePlayersBody"></tbody>
+          <tbody id="gamePlayersBody"></tbody>
         </table>
 
-        <div class="section-title" style="margin-top:10px">Settlement</div>
+        <div style="margin-top:8px">Settlement</div>
         <div id="settlements"></div>
       </div>
     </div>
   </div>
 </div>
 
-<div id="status">Checking Supabase…</div>
+<div id="debug">Debug: <b>booting…</b></div>
 
 <script>
-/*** CONFIG — your Supabase project URL and anon key ***/
+/*** CONFIG: your Supabase credentials ***/
 const SUPABASE_URL  = "https://agyveiqcxcxkporhipcy.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFneXZlaXFjeGN4a3BvcmhpcGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0ODM3OTIsImV4cCI6MjA3MjA1OTc5Mn0.LUCAdM_f4L5oRHJYnjm6W34Tw23CzQ-nyfvTUk5hRWM";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-/*** STATE ***/
+/*** DEBUG LOGGING ***/
+const dbg = (msg, isErr=false) => {
+  const el = document.getElementById('debug');
+  const line = document.createElement('div');
+  line.className = isErr ? 'err' : '';
+  line.textContent = (isErr ? '✖ ' : '• ') + msg;
+  el.appendChild(line);
+  console[isErr ? 'error':'log'](msg);
+};
+
+let sb;
+try {
+  if (!window.supabase) throw new Error("Supabase SDK failed to load.");
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  dbg("Supabase client created.");
+} catch (e) { dbg(e.message || e, true); }
+
+/*** STATE + HELPERS ***/
 let currentGame = null;
-
-/*** HELPERS ***/
 const $ = s => document.querySelector(s);
 const fmt = n => (isNaN(n) ? '-' : '$' + Number(n).toFixed(2));
 
-/*** STATUS CHECK ***/
-(async () => {
-  const status = $('#status');
-  try {
-    const { data, error } = await sb.from('players').select('id').limit(1);
-    if (error) throw error;
-    status.textContent = '✅ Connected to Supabase';
-  } catch (e) {
-    status.textContent = '❌ Supabase error: ' + (e?.message || e);
-    console.error(e);
-  }
-})();
+/*** SAFE ASYNC WRAPPER ***/
+const safe = fn => async (...args) => {
+  try { return await fn(...args); }
+  catch (e) { dbg(String(e), true); alert(String(e)); }
+};
 
-/*** PLAYERS BANK ***/
-async function fetchPlayers() {
+/*** DB CALLS ***/
+const fetchPlayers = safe(async () => {
   const { data, error } = await sb.from('players').select('*').order('name');
-  if (error) { alert(error.message); return []; }
+  if (error) throw error;
   return data || [];
-}
-async function addPlayer(name){
+});
+
+const addPlayer = safe(async (name) => {
   name = (name || '').trim();
-  if(!name) { alert('Enter a player name.'); return; }
+  if (!name) { alert('Enter a player name.'); return; }
   const { error } = await sb.from('players').insert({ name });
-  if (error) { alert('Supabase insert error: ' + error.message); return; }
+  if (error) throw error;
   $('#newPlayerName').value = '';
   await renderPlayersBank();
   await renderPlayersSelection();
   await renderLifetime();
-}
-async function deletePlayer(id){
-  if(!confirm('Remove this player from bank?')) return;
+  dbg(`Added player: ${name}`);
+});
+
+const deletePlayerDB = safe(async (id) => {
   const { error } = await sb.from('players').delete().eq('id', id);
-  if(error){ alert(error.message); return; }
-  await renderPlayersBank();
-  await renderPlayersSelection();
-  await renderLifetime();
-}
-async function renderPlayersBank(){
+  if (error) throw error;
+});
+
+const fetchGames = safe(async () => {
+  const { data, error } = await sb.from('games').select('*').order('created_at', { ascending:false });
+  if (error) throw error;
+  return data || [];
+});
+
+const createGameDB = safe(async (name) => {
+  const { data, error } = await sb.from('games').insert({ name }).select().single();
+  if (error) throw error;
+  return data;
+});
+
+const getGameById = safe(async (id) => {
+  const { data, error } = await sb.from('games').select('*').eq('id', id).single();
+  if (error) throw error;
+  return data;
+});
+
+const fetchGamePlayers = safe(async (game_id) => {
+  const { data, error } = await sb.from('game_players')
+     .select('player_id, players(name)')
+     .eq('game_id', game_id).order('players(name)');
+  if (error) throw error;
+  return data || [];
+});
+
+const insertGamePlayers = safe(async (rows) => {
+  if (!rows.length) return;
+  const { error } = await sb.from('game_players').insert(rows);
+  if (error) throw error;
+});
+
+const deleteGamePlayers = safe(async (game_id, ids) => {
+  if (!ids.length) return;
+  const { error } = await sb.from('game_players').delete().eq('game_id', game_id).in('player_id', ids);
+  if (error) throw error;
+});
+
+const insertBuyin = safe(async (game_id, player_id, amount) => {
+  const { error } = await sb.from('buyins').insert({ game_id, player_id, amount });
+  if (error) throw error;
+});
+
+const updateOrInsertCashout = safe(async (game_id, player_id, amount) => {
+  const { data, error } = await sb.from('cashouts').update({ amount }).eq('game_id', game_id).eq('player_id', player_id).select();
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    const { error: e2 } = await sb.from('cashouts').insert({ game_id, player_id, amount });
+    if (e2) throw e2;
+  }
+});
+
+const loadGameState = safe(async (game_id) => {
+  const gp = await fetchGamePlayers(game_id);
+  const ids = gp.map(r=>r.player_id);
+  if (ids.length === 0) return [];
+  const { data: bi, error: e2 } = await sb.from('buyins').select('*').eq('game_id', game_id).in('player_id', ids);
+  if (e2) throw e2;
+  const { data: co, error: e3 } = await sb.from('cashouts').select('*').eq('game_id', game_id).in('player_id', ids);
+  if (e3) throw e3;
+
+  const byPlayer = {};
+  for(const r of gp){ byPlayer[r.player_id] = { id:r.player_id, name:r.players.name, buyins:0, cashout:0, net:0 }; }
+  for(const b of (bi||[])){ byPlayer[b.player_id].buyins += Number(b.amount); }
+  for(const c of (co||[])){ byPlayer[c.player_id].cashout = Number(c.amount); }
+  for(const k in byPlayer){ const p = byPlayer[k]; p.net = p.cashout - p.buyins; }
+  return Object.values(byPlayer).sort((a,b)=> a.name.localeCompare(b.name));
+});
+
+const deleteGameDB = safe(async (id) => {
+  const { error } = await sb.from('games').delete().eq('id', id);
+  if (error) throw error;
+});
+
+/*** RENDERERS ***/
+const renderPlayersBank = safe(async ()=>{
   const players = await fetchPlayers();
   $('#playersBankBody').innerHTML = players.map(p=>`
     <tr>
       <td>${p.name}</td>
-      <td class="right">
-        <button class="btn red" onclick="deletePlayer('${p.id}')">Remove</button>
-      </td>
+      <td class="right"><button class="btn" data-del="${p.id}">Remove</button></td>
     </tr>
-  `).join('') || `<tr><td colspan="2" class="muted">No players yet.</td></tr>`;
-}
+  `).join('') || `<tr><td colspan="2" style="color:#8aa0b8">No players yet.</td></tr>`;
 
-/*** GAMES ***/
-async function fetchGames(){
-  const { data, error } = await sb.from('games').select('*').order('created_at', { ascending:false });
-  if(error){ alert(error.message); return []; }
-  return data || [];
-}
-async function createGame(name){
-  name = (name || '').trim();
-  if(!name) name = 'Poker Night ' + new Date().toLocaleString();
-  const { data, error } = await sb.from('games').insert({ name }).select().single();
-  if(error){ alert(error.message); return; }
-  currentGame = data;
-  showGamePane();
-  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
-  await renderPlayersSelection(true);
-  $('#selectPlayersPane').classList.remove('hidden'); // open selection after creation
-  await renderGame();
-  await renderGamesDropdown();
-}
-async function renderGamesDropdown(){
+  // hook delete buttons
+  $('#playersBankBody').querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('Remove this player from bank?')) return;
+      await deletePlayerDB(btn.dataset.del);
+      await renderPlayersBank();
+      await renderPlayersSelection();
+      await renderLifetime();
+      dbg('Deleted player '+btn.dataset.del);
+    });
+  });
+});
+
+const renderGamesDropdown = safe(async ()=>{
   const games = await fetchGames();
-  const sel = $('#existingGames');
-  sel.innerHTML = games.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
-}
-async function joinGameById(id){
-  const { data, error } = await sb.from('games').select('*').eq('id', id).single();
-  if(error){ alert(error.message); return; }
-  currentGame = data;
-  showGamePane();
-  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
-  await renderGame();
-}
+  $('#existingGames').innerHTML = games.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+});
 
-/*** UI PANE TOGGLES ***/
-function showGamePane(){
-  $('#noGamePane').classList.add('hidden');
-  $('#gamePane').classList.remove('hidden');
-}
-function showNoGamePane(){
-  $('#gamePane').classList.add('hidden');
-  $('#noGamePane').classList.remove('hidden');
-}
-
-/*** GAME ROSTER SELECT ***/
-async function fetchGamePlayers(game_id){
-  const { data, error } = await sb.from('game_players')
-    .select('player_id, players(name)')
-    .eq('game_id', game_id).order('players(name)');
-  if(error){ alert(error.message); return []; }
-  return data || [];
-}
-async function renderPlayersSelection(open=false){
+const renderPlayersSelection = safe(async (open=false)=>{
   if(!currentGame) return;
   const [bank, gp] = await Promise.all([fetchPlayers(), fetchGamePlayers(currentGame.id)]);
   const selected = new Set(gp.map(r=>r.player_id));
@@ -254,97 +283,13 @@ async function renderPlayersSelection(open=false){
       <input type="checkbox" value="${p.id}" ${selected.has(p.id)?'checked':''}/>
       <span>${p.name}</span>
     </label>
-  `).join('') || `<div class="muted">No players in bank.</div>`;
+  `).join('') || `<div style="color:#8aa0b8">No players in bank.</div>`;
   if(open) $('#selectPlayersPane').classList.remove('hidden');
-}
-async function applyPlayersSelection(){
-  if(!currentGame) return;
-  const checks = Array.from($('#playersCheckboxes').querySelectorAll('input[type=checkbox]'));
-  const chosen = checks.filter(c=>c.checked).map(c=>c.value);
-  const current = await fetchGamePlayers(currentGame.id);
-  const have = new Set(current.map(r=>r.player_id));
+});
 
-  const toAdd = chosen.filter(id=>!have.has(id)).map(player_id=>({ game_id: currentGame.id, player_id }));
-  if(toAdd.length){
-    const { error } = await sb.from('game_players').insert(toAdd);
-    if(error) alert(error.message);
-  }
-  const toRemove = current.filter(r=>!chosen.includes(r.player_id)).map(r=>r.player_id);
-  if(toRemove.length){
-    const { error } = await sb.from('game_players').delete().eq('game_id', currentGame.id).in('player_id', toRemove);
-    if(error) alert(error.message);
-  }
-  $('#selectPlayersPane').classList.add('hidden');
-  await renderGame();
-}
-
-/*** GAME ACTIONS (buy-ins, cash-outs) ***/
-async function addBuyin(player_id, amount){
-  amount = Number(amount);
-  if(!(amount>0)) return alert('Enter a valid buy-in (> 0)');
-  const { error } = await sb.from('buyins').insert({ game_id: currentGame.id, player_id, amount });
-  if(error) alert(error.message);
-}
-async function setCashout(player_id){
-  const inp = prompt('Final cash-out amount (>= 0):'); if(inp===null) return;
-  const amount = Number(inp); if(!(amount>=0)) return alert('Enter a valid number (>= 0)');
-  const { data, error } = await sb.from('cashouts').update({ amount }).eq('game_id', currentGame.id).eq('player_id', player_id).select();
-  if(error) alert(error.message);
-  if(!data || data.length===0){
-    const { error: e2 } = await sb.from('cashouts').insert({ game_id: currentGame.id, player_id, amount });
-    if(e2) alert(e2.message);
-  }
-}
-
-/*** LOAD + RENDER CURRENT GAME ***/
-async function loadGameState(game_id){
-  const { data: gp, error: e1 } = await sb.from('game_players')
-    .select('player_id, players(name)').eq('game_id', game_id);
-  if(e1){ alert(e1.message); return []; }
-  const ids = gp.map(r=>r.player_id);
-  if(ids.length === 0) return [];
-  const { data: bi, error: e2 } = await sb.from('buyins').select('*').eq('game_id', game_id).in('player_id', ids);
-  if(e2){ alert(e2.message); return []; }
-  const { data: co, error: e3 } = await sb.from('cashouts').select('*').eq('game_id', game_id).in('player_id', ids);
-  if(e3){ alert(e3.message); return []; }
-
-  const byPlayer = {};
-  for(const r of gp){ byPlayer[r.player_id] = { id:r.player_id, name:r.players.name, buyins:0, cashout:0, net:0 }; }
-  for(const b of bi){ byPlayer[b.player_id].buyins += Number(b.amount); }
-  for(const c of co){ byPlayer[c.player_id].cashout = Number(c.amount); }
-  for(const k in byPlayer){ const p = byPlayer[k]; p.net = p.cashout - p.buyins; }
-  return Object.values(byPlayer).sort((a,b)=> a.name.localeCompare(b.name));
-}
-async function renderGame(){
-  if(!currentGame){ showNoGamePane(); return; }
-  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
-  const rows = await loadGameState(currentGame.id);
-  const tbody = $('#gamePlayersBody');
-  tbody.innerHTML = rows.map(p=>`
-    <tr>
-      <td>${p.name}</td>
-      <td class="right">${fmt(p.buyins)}</td>
-      <td class="right">${fmt(p.cashout)}</td>
-      <td class="right"><b class="${p.net>0?'good':(p.net<0?'bad':'')}">${fmt(p.net)}</b></td>
-      <td class="right">
-        <button class="btn" onclick="quickBuyin('${p.id}')">+ Buy-in</button>
-        <button class="btn" onclick="setCashout('${p.id}')">Set Cash-out</button>
-      </td>
-    </tr>
-  `).join('') || `<tr><td colspan="5" class="muted">No players selected yet. Click “Select Players”.</td></tr>`;
-
-  const txns = computeSettlements(rows);
-  $('#settlements').innerHTML = txns.length ? txns.map(t=>`
-    <div class="pill" style="display:flex;justify-content:space-between;gap:10px;min-width:240px">
-      <span>💸 <b>${t.from}</b> → <b>${t.to}</b></span>
-      <span><b>${fmt(t.amount)}</b></span>
-    </div>
-  `).join('') : `<div class="muted">Enter cash-outs to compute who owes whom.</div>`;
-}
 function computeSettlements(nets){
-  const creditors = nets.filter(x=>x.net>0).map(x=>({...x}));
-  const debtors = nets.filter(x=>x.net<0).map(x=>({...x}));
-  creditors.sort((a,b)=>b.net-a.net); debtors.sort((a,b)=>a.net-b.net);
+  const creditors = nets.filter(x=>x.net>0).map(x=>({...x})).sort((a,b)=>b.net-a.net);
+  const debtors   = nets.filter(x=>x.net<0).map(x=>({...x})).sort((a,b)=>a.net-b.net);
   const txns=[]; let i=0,j=0;
   while(i<debtors.length && j<creditors.length){
     const owe = Math.min(creditors[j].net, -debtors[i].net);
@@ -358,111 +303,180 @@ function computeSettlements(nets){
   return txns;
 }
 
-/*** LIFETIME LEADERBOARD ***/
-async function renderLifetime(){
-  const players = await fetchPlayers();
-  if(players.length===0){ $('#lifetimeBody').innerHTML = `<tr><td colspan="2" class="muted">No players yet.</td></tr>`; return; }
+const renderGame = safe(async ()=>{
+  if(!currentGame){
+    $('#gamePane').classList.add('hidden');
+    $('#noGamePane').classList.remove('hidden');
+    return;
+  }
+  $('#noGamePane').classList.add('hidden');
+  $('#gamePane').classList.remove('hidden');
+  $('#currentGameTitle').textContent = `Game: ${currentGame.name}`;
 
-  const { data: bi, error: e1 } = await sb.from('buyins').select('player_id, amount');
-  const { data: co, error: e2 } = await sb.from('cashouts').select('player_id, amount');
-  if(e1||e2){ alert((e1||e2).message); return; }
-
-  const buy = {}; const cash = {};
-  (bi||[]).forEach(r => buy[r.player_id] = (buy[r.player_id]||0) + Number(r.amount));
-  (co||[]).forEach(r => cash[r.player_id] = (cash[r.player_id]||0) + Number(r.amount));
-
-  const rows = players.map(p=>{
-    const net = (cash[p.id]||0) - (buy[p.id]||0);
-    return { id:p.id, name:p.name, net };
-  }).sort((a,b)=> b.net - a.net);
-
-  $('#lifetimeSummary').innerHTML = `
-    <span class="pill">Players: <b>${players.length}</b></span>
-    <span class="pill">All-time Leader: <b>${rows[0]?rows[0].name:'—'}</b></span>
-  `;
-  $('#lifetimeBody').innerHTML = rows.map(r=>`
-    <tr>
-      <td>${r.name}</td>
-      <td class="right"><b class="${r.net>0?'good':(r.net<0?'bad':'')}">${fmt(r.net)}</b></td>
-    </tr>
-  `).join('');
-}
-
-/*** END / DELETE GAME ***/
-async function endGame(){
-  if(!currentGame) return;
   const rows = await loadGameState(currentGame.id);
-  if(!rows.length){ alert('No players in this game.'); return; }
-  const sorted = [...rows].sort((a,b)=> b.net - a.net);
-  const winner = sorted[0], loser = sorted[sorted.length-1];
-  alert(`Winner: ${winner.name} (+${fmt(winner.net)})\nLoser: ${loser.name} (${fmt(loser.net)})`);
-}
-async function deleteGame(id) {
-  if (!id) return;
-  if (!confirm("Delete this game and all related buy-ins/cash-outs?")) return;
-  const { error } = await sb.from('games').delete().eq('id', id);
-  if (error) { alert("Error deleting game: " + error.message); return; }
-  currentGame = null;
-  showNoGamePane();
-  await renderGamesDropdown();
-}
+  $('#gamePlayersBody').innerHTML = rows.map(p=>`
+    <tr>
+      <td>${p.name}</td>
+      <td class="right">${fmt(p.buyins)}</td>
+      <td class="right">${fmt(p.cashout)}</td>
+      <td class="right"><b style="color:${p.net>0?'#22c55e':(p.net<0?'#ef4444':'#e9eef5')}">${fmt(p.net)}</b></td>
+      <td class="right">
+        <button class="btn" data-buyin="${p.id}">+ Buy-in</button>
+        <button class="btn" data-cashout="${p.id}">Set Cash-out</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" style="color:#8aa0b8">No players selected yet. Click “Select Players”.</td></tr>`;
 
-/*** QUICK BUY-IN PROMPT (global for inline handlers) ***/
-window.quickBuyin = async function(player_id){
-  const amt = prompt('Buy-in amount (> 0):'); if(amt===null) return;
-  await addBuyin(player_id, Number(amt));
-};
-
-/*** EVENTS ***/
-$('#addPlayerBtn').addEventListener('click', ()=> addPlayer($('#newPlayerName').value));
-$('#createGameBtn').addEventListener('click', ()=> createGame($('#gameName').value));
-$('#joinGameBtn').addEventListener('click', ()=> {
-  const id = $('#existingGames').value; if(!id) return alert('Pick a game from the list.');
-  joinGameById(id);
-});
-$('#selectPlayersBtn').addEventListener('click', async ()=>{
-  await renderPlayersSelection(true);
-  $('#selectPlayersPane').classList.remove('hidden');
-});
-$('#applyPlayersBtn').addEventListener('click', applyPlayersSelection);
-$('#cancelPlayersBtn').addEventListener('click', ()=> $('#selectPlayersPane').classList.add('hidden'));
-$('#endGameBtn').addEventListener('click', endGame);
-$('#deleteGameBtn').addEventListener('click', ()=> deleteGame(currentGame?.id));
-$('#newGameBtn').addEventListener('click', ()=>{
-  currentGame = null;
-  showNoGamePane();
-});
-$('#refreshBtn').addEventListener('click', async ()=>{
-  await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
-  if(currentGame) await renderGame();
-});
-
-/*** REALTIME SUBSCRIPTIONS ***/
-sb.channel('realtime:players')
- .on('postgres_changes', { event:'*', schema:'public', table:'players' }, async ()=>{
-   await renderPlayersBank(); await renderPlayersSelection(); await renderLifetime();
- }).subscribe();
-
-sb.channel('realtime:games')
- .on('postgres_changes', { event:'*', schema:'public', table:'games' }, async ()=>{
-   await renderGamesDropdown();
- }).subscribe();
-
-['game_players','buyins','cashouts'].forEach(t=>{
-  sb.channel('realtime:'+t)
-    .on('postgres_changes', { event:'*', schema:'public', table:t }, async ()=>{
-      if(currentGame) await renderGame();
+  // hook row buttons
+  $('#gamePlayersBody').querySelectorAll('button[data-buyin]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const amt = prompt('Buy-in amount (> 0):'); if(amt===null) return;
+      const n = Number(amt); if(!(n>0)) return alert('Enter a valid buy-in (> 0)');
+      await insertBuyin(currentGame.id, btn.dataset.buyin, n);
+      dbg(`+ Buy-in ${n} for player ${btn.dataset.buyin}`);
+      await renderGame();
       await renderLifetime();
-    })
-    .subscribe();
+    });
+  });
+  $('#gamePlayersBody').querySelectorAll('button[data-cashout]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const amt = prompt('Final cash-out amount (>= 0):'); if(amt===null) return;
+      const n = Number(amt); if(!(n>=0)) return alert('Enter a valid number (>= 0)');
+      await updateOrInsertCashout(currentGame.id, btn.dataset.cashout, n);
+      dbg(`Set cash-out ${n} for player ${btn.dataset.cashout}`);
+      await renderGame();
+      await renderLifetime();
+    });
+  });
+
+  const txns = computeSettlements(rows);
+  $('#settlements').innerHTML = txns.length
+    ? txns.map(t=>`<div style="margin:4px 0">💸 <b>${t.from}</b> → <b>${t.to}</b> <span style="float:right">${fmt(t.amount)}</span></div>`).join('')
+    : `<div style="color:#8aa0b8">Enter cash-outs to compute who owes whom.</div>`;
 });
 
-/*** INITIAL RENDER ***/
-(async function init(){
-  await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
-  // If there are no games at all, keep noGamePane visible.
-  showNoGamePane();
-})();
+const renderLifetime = safe(async ()=>{
+  const players = await fetchPlayers();
+  if(players.length===0){
+    $('#lifetimeBody').innerHTML = `<tr><td colspan="2" style="color:#8aa0b8">No players yet.</td></tr>`; return;
+  }
+  const { data: bi, error: e1 } = await sb.from('buyins').select('player_id, amount'); if(e1) throw e1;
+  const { data: co, error: e2 } = await sb.from('cashouts').select('player_id, amount'); if(e2) throw e2;
+  const buy = {}, cash = {};
+  (bi||[]).forEach(r => buy[r.player_id]  = (buy[r.player_id] || 0) + Number(r.amount));
+  (co||[]).forEach(r => cash[r.player_id] = (cash[r.player_id]|| 0) + Number(r.amount));
+  const rows = players.map(p => ({ name:p.name, net:(cash[p.id]||0) - (buy[p.id]||0) }))
+                     .sort((a,b)=> b.net - a.net);
+  $('#lifetimeBody').innerHTML = rows.map(r=>`
+    <tr><td>${r.name}</td><td class="right"><b style="color:${r.net>0?'#22c55e':(r.net<0?'#ef4444':'#e9eef5')}">${fmt(r.net)}</b></td></tr>
+  `).join('');
+});
+
+/*** UI EVENTS (attached after DOMContentLoaded) ***/
+document.addEventListener('DOMContentLoaded', () => {
+  dbg('DOM ready.');
+
+  $('#addPlayerBtn').addEventListener('click', ()=> addPlayer($('#newPlayerName').value));
+  $('#createGameBtn').addEventListener('click', async ()=>{
+    const name = ($('#gameName').value || '').trim() || ('Poker Night ' + new Date().toLocaleString());
+    const g = await createGameDB(name);
+    currentGame = g;
+    await renderPlayersSelection(true);
+    $('#selectPlayersPane').classList.remove('hidden');
+    await renderGame();
+    await renderGamesDropdown();
+    dbg('Created game: '+name);
+  });
+  $('#joinGameBtn').addEventListener('click', async ()=>{
+    const id = $('#existingGames').value; if(!id) return alert('Pick a game first.');
+    currentGame = await getGameById(id);
+    await renderGame();
+    dbg('Joined game '+id);
+  });
+  $('#selectPlayersBtn').addEventListener('click', async ()=>{
+    await renderPlayersSelection(true);
+    $('#selectPlayersPane').classList.remove('hidden');
+  });
+  $('#applyPlayersBtn').addEventListener('click', async ()=>{
+    if(!currentGame) return;
+    const checks = Array.from(document.querySelectorAll('#playersCheckboxes input[type=checkbox]'));
+    const chosen = checks.filter(c=>c.checked).map(c=>c.value);
+    const existing = await fetchGamePlayers(currentGame.id);
+    const have = new Set(existing.map(r=>r.player_id));
+    const toAdd = chosen.filter(id=>!have.has(id)).map(player_id=>({ game_id: currentGame.id, player_id }));
+    const toRemove = existing.filter(r=>!chosen.includes(r.player_id)).map(r=>r.player_id);
+    await insertGamePlayers(toAdd);
+    await deleteGamePlayers(currentGame.id, toRemove);
+    $('#selectPlayersPane').classList.add('hidden');
+    await renderGame();
+    dbg('Applied player selection.');
+  });
+  $('#cancelPlayersBtn').addEventListener('click', ()=> $('#selectPlayersPane').classList.add('hidden'));
+  $('#endGameBtn').addEventListener('click', async ()=>{
+    if(!currentGame) return;
+    const rows = await loadGameState(currentGame.id);
+    if(!rows.length){ alert('No players in this game.'); return; }
+    const sorted = [...rows].sort((a,b)=> b.net - a.net);
+    const w = sorted[0], l = sorted[sorted.length-1];
+    alert(`Winner: ${w.name} (+${fmt(w.net)})\nLoser: ${l.name} (${fmt(l.net)})`);
+  });
+  $('#deleteGameBtn').addEventListener('click', async ()=>{
+    if(!currentGame) return;
+    if(!confirm("Delete this game and all related buy-ins/cash-outs?")) return;
+    await deleteGameDB(currentGame.id);
+    currentGame = null;
+    await renderGamesDropdown();
+    await renderGame();
+    dbg('Deleted current game.');
+  });
+  $('#newGameBtn').addEventListener('click', ()=>{
+    currentGame = null;
+    $('#gamePane').classList.add('hidden');
+    $('#noGamePane').classList.remove('hidden');
+    dbg('Switched to New Game view.');
+  });
+  $('#refreshBtn').addEventListener('click', async ()=>{
+    await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
+    if(currentGame) await renderGame();
+    dbg('Manual refresh.');
+  });
+
+  // Initial render
+  (async ()=>{
+    // smoke test query to prove connection works
+    try {
+      const { error } = await sb.from('players').select('id').limit(1);
+      if (error) throw error;
+      dbg('✅ Connected to Supabase.');
+    } catch (e) { dbg('Connection error: '+ (e.message || e), true); }
+    await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
+    await renderGame(); // nothing selected -> shows noGamePane
+  })();
+});
+
+/*** REALTIME (optional; harmless if publication not set) ***/
+try{
+  sb.channel('realtime:players')
+   .on('postgres_changes', { event:'*', schema:'public', table:'players' }, async ()=>{
+     await renderPlayersBank(); await renderPlayersSelection(); await renderLifetime();
+     dbg('Realtime: players changed.');
+   }).subscribe();
+
+  sb.channel('realtime:games')
+   .on('postgres_changes', { event:'*', schema:'public', table:'games' }, async ()=>{
+     await renderGamesDropdown();
+     dbg('Realtime: games changed.');
+   }).subscribe();
+
+  ['game_players','buyins','cashouts'].forEach(t=>{
+    sb.channel('realtime:'+t)
+      .on('postgres_changes', { event:'*', schema:'public', table:t }, async ()=>{
+        if(currentGame) await renderGame();
+        await renderLifetime();
+        dbg('Realtime: '+t+' changed.');
+      }).subscribe();
+  });
+}catch(e){ dbg('Realtime setup error: '+(e.message||e), true); }
 </script>
 </body>
 </html>
