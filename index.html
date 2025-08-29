@@ -29,10 +29,18 @@
   tbody tr td:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
   tbody tr td:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
   .right{text-align:right}
-  #debug{position:fixed;left:10px;bottom:10px;max-width:420px;background:#0a0a0a;color:#e9eef5;
-         border:1px solid #333;border-radius:10px;padding:8px 10px;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo;
-         white-space:pre-wrap;opacity:.95;z-index:9999}
-  #debug b{color:#22c55e} #debug .err{color:#ef4444}
+  /* Collapsible header */
+  .collapsible{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 12px;border:1px solid #1f2a3a;border-radius:10px;background:#0a1422}
+  .collapsible .title{display:flex;align-items:center;gap:8px}
+  .chev{transition:transform .2s ease}
+  .collapsed .chev{transform:rotate(-90deg)}
+  /* Debug pill/panel */
+  #debugWrap{position:fixed;left:12px;bottom:12px;z-index:9999}
+  #debugPill{background:#0a1422;border:1px solid #333;color:#e9eef5;border-radius:999px;padding:6px 10px;font:12px/1 ui-monospace;cursor:pointer;opacity:.9}
+  #debugPanel{display:none;max-width:420px;background:#0a0a0a;color:#e9eef5;border:1px solid #333;border-radius:10px;padding:8px 10px;font:12px/1.4 ui-monospace,Menlo;white-space:pre-wrap;opacity:.95;margin-top:6px}
+  #debugPanel .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  #debugPanel .close{cursor:pointer;border:1px solid #444;border-radius:6px;padding:1px 6px}
+  #debugPanel b{color:#22c55e} #debugPanel .err{color:#ef4444}
 </style>
 </head>
 <body>
@@ -46,19 +54,28 @@
   </div>
 
   <div class="grid">
+    <!-- Left: Players + Lifetime -->
     <div class="card">
-      <h2>Players Bank</h2>
-      <div class="row">
-        <input id="newPlayerName" type="text" placeholder="Add new player name…" />
-        <button class="btn primary" id="addPlayerBtn">Add Player</button>
+      <!-- Collapsible Players Bank -->
+      <div id="bankHeader" class="collapsible collapsed" title="Click to expand/collapse">
+        <div class="title"><span class="chev">▾</span><b>Players Bank</b></div>
+        <div id="bankCount" style="color:#8aa0b8;font-size:12px"></div>
       </div>
-      <div style="margin-top:10px">
-        <table>
-          <thead><tr><th>Player</th><th class="right">Actions</th></tr></thead>
-          <tbody id="playersBankBody"></tbody>
-        </table>
+      <div id="bankBody" style="display:none; margin-top:10px">
+        <div class="row">
+          <input id="newPlayerName" type="text" placeholder="Add new player name…" />
+          <button class="btn primary" id="addPlayerBtn">Add Player</button>
+        </div>
+        <div style="margin-top:10px">
+          <table>
+            <thead><tr><th>Player</th><th class="right">Actions</th></tr></thead>
+            <tbody id="playersBankBody"></tbody>
+          </table>
+        </div>
       </div>
-      <hr style="border:0;border-top:1px solid #1f2a3a;margin:10px 0"/>
+
+      <hr style="border:0;border-top:1px solid #1f2a3a;margin:12px 0"/>
+
       <h2>Lifetime Leaderboard</h2>
       <table>
         <thead><tr><th>Player</th><th class="right">Lifetime Net</th></tr></thead>
@@ -66,6 +83,7 @@
       </table>
     </div>
 
+    <!-- Right: Game Controls -->
     <div class="card">
       <h2>Game Controls</h2>
       <div id="noGamePane">
@@ -111,40 +129,60 @@
   </div>
 </div>
 
-<div id="debug">Debug: <b>booting…</b></div>
+<!-- Debug pill/panel -->
+<div id="debugWrap">
+  <div id="debugPill">Debug • Connected</div>
+  <div id="debugPanel">
+    <div class="hdr">
+      <div><b>Debug Log</b></div>
+      <div class="close" id="debugClose">×</div>
+    </div>
+    <div id="debugBody">booting…</div>
+  </div>
+</div>
 
 <script>
 /*** CONFIG: your Supabase credentials ***/
 const SUPABASE_URL  = "https://agyveiqcxcxkporhipcy.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFneXZlaXFjeGN4a3BvcmhpcGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0ODM3OTIsImV4cCI6MjA3MjA1OTc5Mn0.LUCAdM_f4L5oRHJYnjm6W34Tw23CzQ-nyfvTUk5hRWM";
 
-/*** DEBUG LOGGING ***/
-const dbg = (msg, isErr=false) => {
-  const el = document.getElementById('debug');
+/*** DEBUG UI ***/
+const dbgAppend = (msg, isErr=false) => {
+  const body = document.getElementById('debugBody');
   const line = document.createElement('div');
   line.className = isErr ? 'err' : '';
   line.textContent = (isErr ? '✖ ' : '• ') + msg;
-  el.appendChild(line);
-  console[isErr ? 'error':'log'](msg);
+  body.appendChild(line);
+  console[isErr ? 'error' : 'log'](msg);
 };
+(function debugToggleInit(){
+  const pill = document.getElementById('debugPill');
+  const panel = document.getElementById('debugPanel');
+  const close = document.getElementById('debugClose');
+  pill.addEventListener('click', ()=> {
+    panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+  });
+  close.addEventListener('click', ()=> {
+    panel.style.display = 'none';
+    pill.style.display = 'none'; // fully hide if you want
+  });
+})();
 
+/*** SUPABASE INIT ***/
 let sb;
 try {
   if (!window.supabase) throw new Error("Supabase SDK failed to load.");
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  dbg("Supabase client created.");
-} catch (e) { dbg(e.message || e, true); }
+  dbgAppend("Supabase client created.");
+} catch (e) { dbgAppend(e.message || e, true); }
 
-/*** STATE + HELPERS ***/
+/*** STATE & HELPERS ***/
 let currentGame = null;
 const $ = s => document.querySelector(s);
 const fmt = n => (isNaN(n) ? '-' : '$' + Number(n).toFixed(2));
 
-/*** SAFE ASYNC WRAPPER ***/
-const safe = fn => async (...args) => {
-  try { return await fn(...args); }
-  catch (e) { dbg(String(e), true); alert(String(e)); }
-};
+/*** SAFE WRAPPER ***/
+const safe = fn => async (...args) => { try { return await fn(...args); } catch(e){ dbgAppend(String(e), true); alert(String(e)); } };
 
 /*** DB CALLS ***/
 const fetchPlayers = safe(async () => {
@@ -159,7 +197,7 @@ const addPlayer = safe(async (name) => {
   if (error) throw error;
   $('#newPlayerName').value = '';
   await renderPlayersBank(); await renderPlayersSelection(); await renderLifetime();
-  dbg(`Added player: ${name}`);
+  dbgAppend(`Added player: ${name}`);
 });
 const deletePlayerDB = safe(async (id) => {
   const { error } = await sb.from('players').delete().eq('id', id);
@@ -238,6 +276,9 @@ const deleteGameDB = safe(async (id) => {
 /*** RENDERERS ***/
 const renderPlayersBank = safe(async ()=>{
   const players = await fetchPlayers();
+  // count on header
+  $('#bankCount').textContent = players.length ? `${players.length} players` : 'none yet';
+
   $('#playersBankBody').innerHTML = players.map(p=>`
     <tr>
       <td>${p.name}</td>
@@ -253,7 +294,7 @@ const renderPlayersBank = safe(async ()=>{
       await renderPlayersBank();
       await renderPlayersSelection();
       await renderLifetime();
-      dbg('Deleted player '+btn.dataset.del);
+      dbgAppend('Deleted player '+btn.dataset.del);
     });
   });
 });
@@ -322,7 +363,7 @@ const renderGame = safe(async ()=>{
       const amt = prompt('Buy-in amount (> 0):'); if(amt===null) return;
       const n = Number(amt); if(!(n>0)) return alert('Enter a valid buy-in (> 0)');
       await insertBuyin(currentGame.id, btn.dataset.buyin, n);
-      dbg(`+ Buy-in ${n} for player ${btn.dataset.buyin}`);
+      dbgAppend(`+ Buy-in ${n} for player ${btn.dataset.buyin}`);
       await renderGame(); await renderLifetime();
     });
   });
@@ -331,7 +372,7 @@ const renderGame = safe(async ()=>{
       const amt = prompt('Final cash-out amount (>= 0):'); if(amt===null) return;
       const n = Number(amt); if(!(n>=0)) return alert('Enter a valid number (>= 0)');
       await updateOrInsertCashout(currentGame.id, btn.dataset.cashout, n);
-      dbg(`Set cash-out ${n} for player ${btn.dataset.cashout}`);
+      dbgAppend(`Set cash-out ${n} for player ${btn.dataset.cashout}`);
       await renderGame(); await renderLifetime();
     });
   });
@@ -366,16 +407,10 @@ const deleteGame = safe(async (id) => {
   await deleteGameDB(id);
   currentGame = null;
 
-  // Refresh everything so UI and totals reflect the deletion
-  await Promise.all([
-    renderGamesDropdown(),
-    renderPlayersBank(),
-    renderLifetime()
-  ]);
-  await renderGame(); // this will toggle to noGamePane
-  dbg('Deleted game '+id);
+  await Promise.all([renderGamesDropdown(), renderPlayersBank(), renderLifetime()]);
+  await renderGame(); // toggles back to noGamePane
+  dbgAppend('Deleted game '+id);
 });
-
 const endGame = safe(async ()=>{
   if(!currentGame) return;
   const rows = await loadGameState(currentGame.id);
@@ -385,16 +420,28 @@ const endGame = safe(async ()=>{
   alert(`Winner: ${w.name} (+${fmt(w.net)})\nLoser: ${l.name} (${fmt(l.net)})`);
 });
 
-/*** EVENTS (attach after DOM loaded) ***/
-document.addEventListener('DOMContentLoaded', async () => {
-  dbg('DOM ready.');
+/*** COLLAPSIBLE BANK ***/
+(function bankCollapseInit(){
+  const head = document.getElementById('bankHeader');
+  const body = document.getElementById('bankBody');
+  head.addEventListener('click', ()=>{
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'block' : 'none';
+    head.classList.toggle('collapsed', !isHidden);
+  });
+  // start collapsed
+  body.style.display = 'none';
+  head.classList.add('collapsed');
+})();
 
-  // Smoke test connection
+/*** EVENTS ***/
+document.addEventListener('DOMContentLoaded', async () => {
+  // connection smoke test
   try {
     const { error } = await sb.from('players').select('id').limit(1);
     if (error) throw error;
-    dbg('✅ Connected to Supabase.');
-  } catch (e) { dbg('Connection error: '+ (e.message || e), true); }
+    document.getElementById('debugPill').textContent = 'Debug • Connected';
+  } catch (e) { document.getElementById('debugPill').textContent = 'Debug • Error'; dbgAppend('Connection error: '+ (e.message || e), true); }
 
   $('#addPlayerBtn').addEventListener('click', ()=> addPlayer($('#newPlayerName').value));
   $('#createGameBtn').addEventListener('click', async ()=>{
@@ -405,13 +452,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('#selectPlayersPane').classList.remove('hidden');
     await renderGame();
     await renderGamesDropdown();
-    dbg('Created game: '+name);
+    dbgAppend('Created game: '+name);
   });
   $('#joinGameBtn').addEventListener('click', async ()=>{
     const id = $('#existingGames').value; if(!id) return alert('Pick a game first.');
     currentGame = await getGameById(id);
     await renderGame();
-    dbg('Joined game '+id);
+    dbgAppend('Joined game '+id);
   });
   $('#selectPlayersBtn').addEventListener('click', async ()=>{
     await renderPlayersSelection(true);
@@ -429,7 +476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await deleteGamePlayers(currentGame.id, toRemove);
     $('#selectPlayersPane').classList.add('hidden');
     await renderGame();
-    dbg('Applied player selection.');
+    dbgAppend('Applied player selection.');
   });
   $('#cancelPlayersBtn').addEventListener('click', ()=> $('#selectPlayersPane').classList.add('hidden'));
   $('#endGameBtn').addEventListener('click', endGame);
@@ -441,30 +488,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentGame = null;
     $('#gamePane').classList.add('hidden');
     $('#noGamePane').classList.remove('hidden');
-    dbg('Switched to New Game view.');
+    dbgAppend('Switched to New Game view.');
   });
   $('#refreshBtn').addEventListener('click', async ()=>{
     await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
     if(currentGame) await renderGame();
-    dbg('Manual refresh.');
+    dbgAppend('Manual refresh.');
   });
 
   await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
   await renderGame(); // nothing selected -> shows noGamePane
 });
 
-/*** REALTIME (harmless if publication not set) ***/
+/*** REALTIME (optional) ***/
 try{
   sb.channel('realtime:players')
    .on('postgres_changes', { event:'*', schema:'public', table:'players' }, async ()=>{
      await renderPlayersBank(); await renderPlayersSelection(); await renderLifetime();
-     dbg('Realtime: players changed.');
+     dbgAppend('Realtime: players changed.');
    }).subscribe();
 
   sb.channel('realtime:games')
    .on('postgres_changes', { event:'*', schema:'public', table:'games' }, async ()=>{
      await renderGamesDropdown();
-     dbg('Realtime: games changed.');
+     dbgAppend('Realtime: games changed.');
    }).subscribe();
 
   ['game_players','buyins','cashouts'].forEach(t=>{
@@ -472,10 +519,10 @@ try{
       .on('postgres_changes', { event:'*', schema:'public', table:t }, async ()=>{
         if(currentGame) await renderGame();
         await renderLifetime();
-        dbg('Realtime: '+t+' changed.');
+        dbgAppend('Realtime: '+t+' changed.');
       }).subscribe();
   });
-}catch(e){ dbg('Realtime setup error: '+(e.message||e), true); }
+}catch(e){ dbgAppend('Realtime setup error: '+(e.message||e), true); }
 </script>
 </body>
 </html>
