@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Poker Tracker – Roster, Games, Lifetime</title>
+<title>Poker Tracker – vNEXT</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -29,11 +30,13 @@
   tbody tr td:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
   tbody tr td:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
   .right{text-align:right}
-  /* Collapsible header */
+
+  /* Collapsible Players Bank */
   .collapsible{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 12px;border:1px solid #1f2a3a;border-radius:10px;background:#0a1422}
   .collapsible .title{display:flex;align-items:center;gap:8px}
   .chev{transition:transform .2s ease}
   .collapsed .chev{transform:rotate(-90deg)}
+
   /* Debug pill/panel */
   #debugWrap{position:fixed;left:12px;bottom:12px;z-index:9999}
   #debugPill{background:#0a1422;border:1px solid #333;color:#e9eef5;border-radius:999px;padding:6px 10px;font:12px/1 ui-monospace;cursor:pointer;opacity:.9}
@@ -46,7 +49,10 @@
 <body>
 <div class="wrap">
   <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
-    <h1>🃏 Poker Tracker</h1>
+    <div>
+      <h1 style="margin:0">🃏 Poker Tracker</h1>
+      <div id="version" style="color:#8aa0b8;font-size:12px;margin-left:2px">Build: 004</div>
+    </div>
     <div class="row">
       <button class="btn" id="newGameBtn">New Game</button>
       <button class="btn" id="refreshBtn">Refresh</button>
@@ -164,7 +170,7 @@ const dbgAppend = (msg, isErr=false) => {
   });
   close.addEventListener('click', ()=> {
     panel.style.display = 'none';
-    pill.style.display = 'none'; // fully hide if you want
+    pill.style.display = 'none'; // hide entirely if you want
   });
 })();
 
@@ -276,7 +282,7 @@ const deleteGameDB = safe(async (id) => {
 /*** RENDERERS ***/
 const renderPlayersBank = safe(async ()=>{
   const players = await fetchPlayers();
-  // count on header
+  // header count
   $('#bankCount').textContent = players.length ? `${players.length} players` : 'none yet';
 
   $('#playersBankBody').innerHTML = players.map(p=>`
@@ -411,13 +417,35 @@ const deleteGame = safe(async (id) => {
   await renderGame(); // toggles back to noGamePane
   dbgAppend('Deleted game '+id);
 });
+
+// FUN popup with funny lines
 const endGame = safe(async ()=>{
   if(!currentGame) return;
   const rows = await loadGameState(currentGame.id);
   if(!rows.length){ alert('No players in this game.'); return; }
   const sorted = [...rows].sort((a,b)=> b.net - a.net);
   const w = sorted[0], l = sorted[sorted.length-1];
-  alert(`Winner: ${w.name} (+${fmt(w.net)})\nLoser: ${l.name} (${fmt(l.net)})`);
+
+  const winMsgs = [
+    "rakes in the chips!",
+    "is buying pizza tonight!",
+    "shows no mercy!",
+    "is the shark of the table!",
+    "brought the heat!",
+    "just paid for gas with your money!"
+  ];
+  const loseMsgs = [
+    "donated to the pot 💸",
+    "got bluffed into oblivion 😅",
+    "better luck next time!",
+    "is walking home broke!",
+    "claims it was 'all bad beats'…",
+    "put the 'cry' in cry-river"
+  ];
+  const wm = winMsgs[Math.floor(Math.random()*winMsgs.length)];
+  const lm = loseMsgs[Math.floor(Math.random()*loseMsgs.length)];
+
+  alert(`🏆 Winner: ${w.name} (+${fmt(w.net)})\n👉 ${w.name} ${wm}\n\n💀 Loser: ${l.name} (${fmt(l.net)})\n👉 ${l.name} ${lm}`);
 });
 
 /*** COLLAPSIBLE BANK ***/
