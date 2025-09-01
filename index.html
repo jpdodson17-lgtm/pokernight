@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Cache-Control" content="no-store" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Poker Tracker – vNEXT</title>
+<title>Poker Tracker – vNEXT + Fun Tools</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -19,10 +19,14 @@
   .card{background:#0f1a2a;border:1px solid #1f2a3a;border-radius:16px;padding:16px}
   input,button,select{font:inherit}
   input[type="text"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #203040;background:#0a1422;color:var(--text)}
-  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .btn{padding:9px 12px;border-radius:10px;border:1px solid #26364a;background:#0a1422;color:var(--text);cursor:pointer}
   .btn:hover{background:#0e1a2b}
   .btn.primary{border-color:#1a6b3b;background:#0d2016}
+  .btn.ghost{background:transparent;border-color:#26364a}
+  .btn.red{border-color:#7a1f1f;background:#1a0f0f}
+  .hidden{display:none !important}
+
   table{width:100%;border-collapse:separate;border-spacing:0 8px}
   thead th{font-size:12px;color:#8aa0b8;text-transform:uppercase;letter-spacing:.08em;text-align:left}
   td{padding:8px 10px} th{padding:4px 10px}
@@ -44,6 +48,92 @@
   #debugPanel .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
   #debugPanel .close{cursor:pointer;border:1px solid #444;border-radius:6px;padding:1px 6px}
   #debugPanel b{color:#22c55e} #debugPanel .err{color:#ef4444}
+
+  /* ---------- MODALS ---------- */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:9998}
+  .modal.open{display:flex}
+  .modal .sheet{position:relative;background:#0f1a2a;border:1px solid #203040;border-radius:18px;box-shadow:0 20px 80px rgba(0,0,0,.5);padding:16px;max-width:920px;width:95%}
+  .modal .sheet h3{margin:0 0 10px}
+  .modal .closeX{position:absolute;right:10px;top:10px;cursor:pointer;border:1px solid #2a3a4f;border-radius:8px;padding:3px 8px;background:#0a1422}
+  .modal .toolbar{display:flex;gap:8px;align-items:center;margin:8px 0 12px}
+  .modal .tray{display:grid;gap:14px}
+
+  /* ---------- WHEEL styles ---------- */
+  .wheel-wrap{position:relative;display:grid;place-items:center}
+  .wheel-pointer{
+    position:absolute; left:50%; top:-6px; transform:translateX(-50%);
+    width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:30px solid #f8fafc;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));
+  }
+  #wheelCanvas{background:#0f172a;border-radius:16px;border:1px solid #223049;display:block;width:min(560px,85vw);height:auto}
+
+  /* ---------- 8-BALL styles ---------- */
+  .ball-wrap{position:relative; width:min(520px, 85vw); aspect-ratio:1/1; display:grid; place-items:center; margin:0 auto}
+  .ground-shadow{position:absolute; inset:auto 0 -12px 0; margin:auto; width:70%; height:22px; border-radius:50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,.42), rgba(0,0,0,0)); filter: blur(6px); pointer-events:none;}
+  .ball{
+    position:relative; width:100%; height:100%; border-radius:50%;
+    background:
+      radial-gradient(60% 55% at 38% 30%, rgba(255,255,255,.09), transparent 60%),
+      radial-gradient(42% 38% at 62% 66%, rgba(255,255,255,.06), transparent 70%),
+      radial-gradient(90% 90% at 50% 45%, #1a1a1a, #0b0b0b 55%, #020202);
+    box-shadow:
+      inset 0 24px 110px rgba(255,255,255,.08),
+      inset 0 -40px 120px rgba(0,0,0,.85),
+      0 40px 160px rgba(0,0,0,.55);
+    overflow:hidden;
+  }
+  .grain{position:absolute; inset:0; opacity:.08; pointer-events:none; mix-blend-mode:soft-light;
+    background-image:
+      radial-gradient(1px 1px at 13% 23%, #fff 40%, transparent 41%),
+      radial-gradient(1px 1px at 73% 63%, #fff 40%, transparent 41%),
+      radial-gradient(1px 1px at 41% 79%, #fff 40%, transparent 41%),
+      radial-gradient(1px 1px at 83% 37%, #fff 40%, transparent 41%);
+    background-size: 140px 140px, 160px 160px, 180px 180px, 200px 200px;
+  }
+  .window{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:44%; aspect-ratio:1; border-radius:50%;
+    background:
+      radial-gradient(52% 44% at 46% 36%, rgba(255,255,255,.15), rgba(255,255,255,0) 60%),
+      radial-gradient(62% 60% at 52% 58%, #132a45, #0b1726);
+    border:2px solid rgba(200,220,255,.28);
+    box-shadow: inset 0 12px 36px rgba(255,255,255,.25), inset 0 -20px 46px rgba(0,0,0,.6), 0 0 0 5px rgba(0,0,0,.55), 0 0 0 9px #0b0e18;
+    display:grid; place-items:center; overflow:hidden;
+  }
+  .shine{position:absolute; inset:0; pointer-events:none; border-radius:50%;
+    background: radial-gradient(34% 20% at 36% 28%, rgba(255,255,255,.18), transparent 60%), radial-gradient(25% 18% at 62% 64%, rgba(255,255,255,.1), transparent 70%);
+    mix-blend-mode:screen;}
+  .triangle{ position:relative; width:76%; aspect-ratio:1; transform: translateY(8%) scale(.98); }
+  .tri-shape{
+    width:100%; height:100%;
+    background: conic-gradient(from 180deg at 50% 63%, #0e5fda 0 120deg, #0b4fba 120deg 240deg, #093f96 240deg 360deg);
+    -webkit-clip-path: polygon(50% 0%, 0% 86%, 100% 86%);
+            clip-path: polygon(50% 0%, 0% 86%, 100% 86%);
+    border:1px solid rgba(255,255,255,.18);
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,.5));
+  }
+  .answer{position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:70%; text-align:center; color:#eaf2ff; font-weight:850; letter-spacing:.02em; text-shadow: 0 2px 4px rgba(0,0,0,.6); font-size: clamp(13px, 2.8vw, 20px); }
+  .shake{ animation: shake 2.8s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes shake{
+    0% { transform: translateZ(0) }
+    6% { transform: translate(8px,-6px) rotate(-2deg) }
+    14%{ transform: translate(-10px,7px) rotate(2.6deg) }
+    22%{ transform: translate(10px,-8px) rotate(-3.1deg) }
+    30%{ transform: translate(-9px,6px) rotate(2.2deg) }
+    38%{ transform: translate(7px,-5px) rotate(-1.6deg) }
+    46%{ transform: translate(-6px,4px) rotate(1.2deg) }
+    56%{ transform: translate(5px,-3px) rotate(-.9deg) }
+    66%{ transform: translate(-4px,2px) rotate(.6deg) }
+    76%{ transform: translate(3px,-2px) rotate(-.4deg) }
+    86%{ transform: translate(-2px,1px) rotate(.25deg) }
+    100%{ transform: translate(0,0) rotate(0) }
+  }
+  .reveal{ animation: reveal 700ms ease-out both 1.7s; }
+  @keyframes reveal{
+    0% { opacity:0; transform:translate(-50%,-44%) scale(.92); filter:blur(2px) }
+    100%{ opacity:1; transform:translate(-50%,-50%) scale(1); filter:blur(0) }
+  }
 </style>
 </head>
 <body>
@@ -51,9 +141,12 @@
   <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
     <div>
       <h1 style="margin:0">🃏 Poker Tracker</h1>
-      <div id="version" style="color:#8aa0b8;font-size:12px;margin-left:2px">Build: 004</div>
+      <div id="version" style="color:#8aa0b8;font-size:12px;margin-left:2px">Build: 007</div>
     </div>
     <div class="row">
+      <!-- NEW FUN BUTTONS -->
+      <button class="btn ghost" id="openWheel">🎡 Fun Wheel</button>
+      <button class="btn ghost" id="openBall">🎱 Magic 8-Ball</button>
       <button class="btn" id="newGameBtn">New Game</button>
       <button class="btn" id="refreshBtn">Refresh</button>
     </div>
@@ -67,7 +160,7 @@
         <div class="title"><span class="chev">▾</span><b>Players Bank</b></div>
         <div id="bankCount" style="color:#8aa0b8;font-size:12px"></div>
       </div>
-      <div id="bankBody" style="display:none; margin-top:10px">
+      <div id="bankBody" class="hidden" style="margin-top:10px">
         <div class="row">
           <input id="newPlayerName" type="text" placeholder="Add new player name…" />
           <button class="btn primary" id="addPlayerBtn">Add Player</button>
@@ -125,7 +218,7 @@
         <div style="margin-top:8px">Players in this Game</div>
         <table>
           <thead><tr><th>Player</th><th class="right">Buy-ins</th><th class="right">Cash-out</th><th class="right">Net</th><th class="right">Actions</th></tr></thead>
-          <tbody id="gamePlayersBody"></tbody>
+        <tbody id="gamePlayersBody"></tbody>
         </table>
 
         <div style="margin-top:8px">Settlement</div>
@@ -147,12 +240,59 @@
   </div>
 </div>
 
+<!-- ====================== MODAL: FUN WHEEL ====================== -->
+<div id="wheelModal" class="modal" aria-hidden="true">
+  <div class="sheet">
+    <button class="closeX" id="closeWheel">Close</button>
+    <h3>🎡 Fun Wheel</h3>
+    <div class="toolbar">
+      <button class="btn primary" id="spinBtn">▶️ Spin</button>
+      <button class="btn red" id="stopBtn">⏹ Stop</button>
+      <div id="wheelResult" style="margin-left:auto;color:#8aa0b8">—</div>
+    </div>
+    <div class="wheel-wrap">
+      <div class="wheel-pointer"></div>
+      <canvas id="wheelCanvas" width="560" height="560"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: MAGIC 8-BALL ====================== -->
+<div id="ballModal" class="modal" aria-hidden="true">
+  <div class="sheet">
+    <button class="closeX" id="closeBall">Close</button>
+    <h3>🎱 Magic 8-Ball</h3>
+    <div style="color:#8aa0b8;margin:4px 0 10px;text-align:center">
+      Question: <b>Is Yaya bluffing?</b>
+    </div>
+    <div class="tray">
+      <div class="ball-wrap">
+        <div class="ground-shadow"></div>
+        <div id="ball" class="ball" role="button" aria-label="Magic 8-Ball (click to shake)">
+          <div class="window">
+            <div class="triangle">
+              <div class="tri-shape"></div>
+              <div id="answer" class="answer">—</div>
+            </div>
+            <div class="shine"></div>
+          </div>
+          <div class="grain"></div>
+        </div>
+      </div>
+      <div class="toolbar" style="justify-content:center">
+        <button id="shakeBtn" class="btn">Shake</button>
+        <button id="againBtn" class="btn">Ask Again</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-/*** CONFIG: your Supabase credentials ***/
+/*** CONFIG: Supabase credentials ***/
 const SUPABASE_URL  = "https://agyveiqcxcxkporhipcy.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFneXZlaXFjeGN4a3BvcmhpcGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0ODM3OTIsImV4cCI6MjA3MjA1OTc5Mn0.LUCAdM_f4L5oRHJYnjm6W34Tw23CzQ-nyfvTUk5hRWM";
 
-/*** DEBUG UI ***/
+/*** DEBUG ***/
 const dbgAppend = (msg, isErr=false) => {
   const body = document.getElementById('debugBody');
   const line = document.createElement('div');
@@ -170,7 +310,7 @@ const dbgAppend = (msg, isErr=false) => {
   });
   close.addEventListener('click', ()=> {
     panel.style.display = 'none';
-    pill.style.display = 'none'; // hide entirely if you want
+    pill.style.display = 'none';
   });
 })();
 
@@ -182,7 +322,7 @@ try {
   dbgAppend("Supabase client created.");
 } catch (e) { dbgAppend(e.message || e, true); }
 
-/*** STATE & HELPERS ***/
+/*** STATE & HELPERS (app) ***/
 let currentGame = null;
 const $ = s => document.querySelector(s);
 const fmt = n => (isNaN(n) ? '-' : '$' + Number(n).toFixed(2));
@@ -273,7 +413,6 @@ const loadGameState = safe(async (game_id) => {
   for(const k in byPlayer){ const p = byPlayer[k]; p.net = p.cashout - p.buyins; }
   return Object.values(byPlayer).sort((a,b)=> a.name.localeCompare(b.name));
 });
-
 const deleteGameDB = safe(async (id) => {
   const { error } = await sb.from('games').delete().eq('id', id);
   if (error) throw error;
@@ -282,17 +421,13 @@ const deleteGameDB = safe(async (id) => {
 /*** RENDERERS ***/
 const renderPlayersBank = safe(async ()=>{
   const players = await fetchPlayers();
-  // header count
   $('#bankCount').textContent = players.length ? `${players.length} players` : 'none yet';
-
   $('#playersBankBody').innerHTML = players.map(p=>`
     <tr>
       <td>${p.name}</td>
       <td class="right"><button class="btn" data-del="${p.id}">Remove</button></td>
     </tr>
   `).join('') || `<tr><td colspan="2" style="color:#8aa0b8">No players yet.</td></tr>`;
-
-  // hook delete buttons
   $('#playersBankBody').querySelectorAll('button[data-del]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!confirm('Remove this player from bank?')) return;
@@ -304,12 +439,10 @@ const renderPlayersBank = safe(async ()=>{
     });
   });
 });
-
 const renderGamesDropdown = safe(async ()=>{
   const games = await fetchGames();
   $('#existingGames').innerHTML = games.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
 });
-
 const renderPlayersSelection = safe(async (open=false)=>{
   if(!currentGame) return;
   const [bank, gp] = await Promise.all([fetchPlayers(), fetchGamePlayers(currentGame.id)]);
@@ -322,23 +455,19 @@ const renderPlayersSelection = safe(async (open=false)=>{
   `).join('') || `<div style="color:#8aa0b8">No players in bank.</div>`;
   if(open) $('#selectPlayersPane').classList.remove('hidden');
 });
-
 function computeSettlements(nets){
   const creditors = nets.filter(x=>x.net>0).map(x=>({...x})).sort((a,b)=>b.net-a.net);
   const debtors   = nets.filter(x=>x.net<0).map(x=>({...x})).sort((a,b)=>a.net-b.net);
   const txns=[]; let i=0,j=0;
   while(i<debtors.length && j<creditors.length){
     const owe = Math.min(creditors[j].net, -debtors[i].net);
-    if(owe>0.0001){
-      txns.push({from: debtors[i].name, to: creditors[j].name, amount: owe});
-      creditors[j].net -= owe; debtors[i].net += owe;
-    }
+    if(owe>0.0001){ txns.push({from: debtors[i].name, to: creditors[j].name, amount: owe});
+      creditors[j].net -= owe; debtors[i].net += owe; }
     if(creditors[j].net<=0.0001) j++;
     if(debtors[i].net>=-0.0001) i++;
   }
   return txns;
 }
-
 const renderGame = safe(async ()=>{
   if(!currentGame){
     $('#gamePane').classList.add('hidden');
@@ -363,7 +492,6 @@ const renderGame = safe(async ()=>{
     </tr>
   `).join('') || `<tr><td colspan="5" style="color:#8aa0b8">No players selected yet. Click “Select Players”.</td></tr>`;
 
-  // hook row buttons
   $('#gamePlayersBody').querySelectorAll('button[data-buyin]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const amt = prompt('Buy-in amount (> 0):'); if(amt===null) return;
@@ -388,7 +516,6 @@ const renderGame = safe(async ()=>{
     ? txns.map(t=>`<div style="margin:4px 0">💸 <b>${t.from}</b> → <b>${t.to}</b> <span style="float:right">${fmt(t.amount)}</span></div>`).join('')
     : `<div style="color:#8aa0b8">Enter cash-outs to compute who owes whom.</div>`;
 });
-
 const renderLifetime = safe(async ()=>{
   const players = await fetchPlayers();
   if(players.length===0){
@@ -412,39 +539,20 @@ const deleteGame = safe(async (id) => {
   if (!confirm("Delete this game and all related buy-ins/cash-outs?")) return;
   await deleteGameDB(id);
   currentGame = null;
-
   await Promise.all([renderGamesDropdown(), renderPlayersBank(), renderLifetime()]);
-  await renderGame(); // toggles back to noGamePane
+  await renderGame();
   dbgAppend('Deleted game '+id);
 });
-
-// FUN popup with funny lines
 const endGame = safe(async ()=>{
   if(!currentGame) return;
   const rows = await loadGameState(currentGame.id);
   if(!rows.length){ alert('No players in this game.'); return; }
   const sorted = [...rows].sort((a,b)=> b.net - a.net);
   const w = sorted[0], l = sorted[sorted.length-1];
-
-  const winMsgs = [
-    "rakes in the chips!",
-    "is buying pizza tonight!",
-    "shows no mercy!",
-    "is the shark of the table!",
-    "brought the heat!",
-    "just paid for gas with your money!"
-  ];
-  const loseMsgs = [
-    "donated to the pot 💸",
-    "got bluffed into oblivion 😅",
-    "better luck next time!",
-    "is walking home broke!",
-    "claims it was 'all bad beats'…",
-    "put the 'cry' in cry-river"
-  ];
+  const winMsgs = ["rakes in the chips!","is buying pizza tonight!","shows no mercy!","is the shark of the table!","brought the heat!","just paid for gas with your money!"];
+  const loseMsgs= ["donated to the pot 💸","got bluffed into oblivion 😅","better luck next time!","is walking home broke!","claims it was 'all bad beats'…","put the 'cry' in cry-river"];
   const wm = winMsgs[Math.floor(Math.random()*winMsgs.length)];
   const lm = loseMsgs[Math.floor(Math.random()*loseMsgs.length)];
-
   alert(`🏆 Winner: ${w.name} (+${fmt(w.net)})\n👉 ${w.name} ${wm}\n\n💀 Loser: ${l.name} (${fmt(l.net)})\n👉 ${l.name} ${lm}`);
 });
 
@@ -453,18 +561,16 @@ const endGame = safe(async ()=>{
   const head = document.getElementById('bankHeader');
   const body = document.getElementById('bankBody');
   head.addEventListener('click', ()=>{
-    const isHidden = body.style.display === 'none';
-    body.style.display = isHidden ? 'block' : 'none';
-    head.classList.toggle('collapsed', !isHidden);
+    const wasHidden = body.classList.contains('hidden');
+    body.classList.toggle('hidden', !wasHidden ? true : false); // toggle
+    head.classList.toggle('collapsed', body.classList.contains('hidden'));
   });
-  // start collapsed
-  body.style.display = 'none';
+  body.classList.add('hidden');
   head.classList.add('collapsed');
 })();
 
-/*** EVENTS ***/
+/*** EVENTS (app) ***/
 document.addEventListener('DOMContentLoaded', async () => {
-  // connection smoke test
   try {
     const { error } = await sb.from('players').select('id').limit(1);
     if (error) throw error;
@@ -524,8 +630,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     dbgAppend('Manual refresh.');
   });
 
+  // Open/close modals
+  $('#openWheel').addEventListener('click', ()=> openModal('wheelModal'));
+  $('#openBall').addEventListener('click',  ()=> openModal('ballModal'));
+  $('#closeWheel').addEventListener('click', ()=> closeModal('wheelModal'));
+  $('#closeBall').addEventListener('click',  ()=> closeModal('ballModal'));
+  document.getElementById('wheelModal').addEventListener('click', (e)=>{ if(e.target.id==='wheelModal') closeModal('wheelModal'); });
+  document.getElementById('ballModal').addEventListener('click',  (e)=>{ if(e.target.id==='ballModal')  closeModal('ballModal'); });
+
   await Promise.all([renderPlayersBank(), renderGamesDropdown(), renderLifetime()]);
-  await renderGame(); // nothing selected -> shows noGamePane
+  await renderGame();
 });
 
 /*** REALTIME (optional) ***/
@@ -551,6 +665,230 @@ try{
       }).subscribe();
   });
 }catch(e){ dbgAppend('Realtime setup error: '+(e.message||e), true); }
+
+/* ======================= MODAL HELPERS ======================= */
+function openModal(id){ const m=document.getElementById(id); m.classList.add('open'); m.setAttribute('aria-hidden','false'); }
+function closeModal(id){ const m=document.getElementById(id); m.classList.remove('open'); m.setAttribute('aria-hidden','true'); }
+
+/* ======================= FUN WHEEL LOGIC ======================= */
+(() => {
+  const canvas = document.getElementById('wheelCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width/2, cy = canvas.height/2, R = Math.min(canvas.width, canvas.height)/2 - 20;
+  const PEG_COUNT=60, SPIN_MS=8000, EXTRA_TURNS=5;
+
+  // Weighted slices (Pre-Flop tiniest; All-In small; Bluff small; others large)
+  const SEGMENTS = [
+    {label:"Pre-Flop Raise", weight:0.3, color:"#facc15"},
+    {label:"All-In",         weight:0.5, color:"#ef4444"},
+    {label:"Bluff",          weight:1.0, color:"#f97316"},
+    {label:"Call",           weight:2.0, color:"#22c55e"},
+    {label:"Raise",          weight:2.0, color:"#3b82f6"},
+    {label:"Fold",           weight:2.0, color:"#a855f7"},
+  ];
+  const totalWeight = SEGMENTS.reduce((s,x)=>s+x.weight,0);
+
+  let angle=0, spinning=false, stopRequested=false, startAngle=0, targetAngle=0, startTime=0, lastTickIndex=null;
+
+  const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  function clickSound(){
+    try{
+      const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+      o.type="square"; o.frequency.value=1200; g.gain.value=0.02;
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.03);
+    }catch(e){}
+  }
+  const norm = a => { a%=2*Math.PI; if(a<0) a+=2*Math.PI; return a; };
+  const EASE = t => 1 - Math.pow(1 - t, 5); // easeOutQuint
+
+  function draw(a){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+    let start=0;
+    for(const seg of SEGMENTS){
+      const arc=2*Math.PI*(seg.weight/totalWeight);
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,start,start+arc); ctx.closePath();
+      ctx.fillStyle=seg.color; ctx.fill();
+
+      // label
+      ctx.save();
+      const mid=start+arc/2;
+      ctx.rotate(mid); ctx.translate(R*0.62,0); ctx.rotate(Math.PI/2);
+      if(seg.label==="Pre-Flop Raise"){
+        // vertical stacked words with autosize
+        const words=["Pre","Flop","Raise"];
+        const arcLen = arc*(R*0.62); let fontPx=16; if(arcLen<60) fontPx=12;
+        ctx.font=`bold ${fontPx}px sans-serif`;
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.strokeStyle="rgba(0,0,0,.3)"; ctx.lineWidth=3;
+        const lh=Math.round(fontPx*1.05), totalH=words.length*lh; let y=-totalH/2+lh/2;
+        words.forEach(w=>{ ctx.strokeText(w,0,y); y+=lh; });
+        y=-totalH/2+lh/2; ctx.fillStyle="#f8fafc"; words.forEach(w=>{ ctx.fillText(w,0,y); y+=lh; });
+      }else{
+        const arcLen = arc*(R*0.62); let fontPx=18; if(arcLen<90) fontPx=16; if(arcLen<70) fontPx=14;
+        ctx.font=`bold ${fontPx}px sans-serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.strokeStyle="rgba(0,0,0,.3)"; ctx.lineWidth=3; ctx.strokeText(seg.label,0,0);
+        ctx.fillStyle="#f8fafc"; ctx.fillText(seg.label,0,0);
+      }
+      ctx.restore();
+      start+=arc;
+    }
+    // pegs
+    ctx.fillStyle="#dbeafe";
+    for(let i=0;i<PEG_COUNT;i++){
+      const pa=i*(2*Math.PI/PEG_COUNT);
+      ctx.beginPath(); ctx.arc(Math.cos(pa)*(R+4),Math.sin(pa)*(R+4),2,0,2*Math.PI); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function segmentUnderPointer(a){
+    const pointerRel = norm(-Math.PI/2 - a); // top pointer
+    let acc=0;
+    for(const seg of SEGMENTS){
+      const arc=2*Math.PI*(seg.weight/totalWeight);
+      if(pointerRel>=acc && pointerRel<acc+arc) return seg;
+      acc+=arc;
+    }
+    return SEGMENTS[SEGMENTS.length-1];
+  }
+
+  function spin(){
+    if(spinning) return;
+    spinning=true; stopRequested=false; startTime=performance.now(); startAngle=angle;
+
+    // weighted pick
+    const r=Math.random()*totalWeight; let acc=0, chosen=null, idx=0;
+    for(let i=0;i<SEGMENTS.length;i++){ acc+=SEGMENTS[i].weight; if(r<=acc){ chosen=SEGMENTS[i]; idx=i; break; } }
+    let offW=0; for(let i=0;i<idx;i++) offW+=SEGMENTS[i].weight;
+    const chosenCenter=(offW + chosen.weight/2)/totalWeight*2*Math.PI;
+    const landAt = norm(-Math.PI/2 - chosenCenter);
+    const totalRot = EXTRA_TURNS*2*Math.PI + landAt - norm(startAngle);
+    targetAngle = startAngle + totalRot;
+
+    lastTickIndex=null;
+    document.getElementById('wheelResult').textContent = "Spinning…";
+    animate();
+  }
+  function stopSpin(){ stopRequested=true; }
+  function animate(){
+    if(!spinning) return;
+    requestAnimationFrame(animate);
+    const elapsed=performance.now()-startTime;
+    const dur=stopRequested?Math.min(SPIN_MS,1200):SPIN_MS;
+    const p=Math.min(1,elapsed/dur), eased=EASE(p);
+    angle = startAngle + (targetAngle - startAngle)*eased;
+
+    const pegAngle=2*Math.PI/PEG_COUNT, pegIndex=Math.floor(angle/pegAngle);
+    if(lastTickIndex===null) lastTickIndex=pegIndex;
+    if(pegIndex!==lastTickIndex){ clickSound(); lastTickIndex=pegIndex; }
+
+    draw(angle);
+    if(p>=1){
+      spinning=false;
+      angle=targetAngle; draw(angle);
+      const seg = segmentUnderPointer(angle);
+      document.getElementById('wheelResult').textContent = `Result: ${seg.label}`;
+    }
+  }
+
+  draw(angle);
+  document.getElementById('spinBtn').onclick=spin;
+  document.getElementById('stopBtn').onclick=stopSpin;
+})();
+
+/* ======================= MAGIC 8-BALL LOGIC ======================= */
+(() => {
+  const RESPONSES = [
+    "Yes — total bluff","Probably bluffing","Bluff written all over it","Pay to find out","99% bluff",
+    "Her story leaks chips","Everything screams bluff","Cards look like air","Thin value… still bluffy","she has 2 pair"
+  ];
+  // Bias toward bluff by duplicating some “yes” lines
+  const WEIGHTED = [
+    "Yes — total bluff","Yes — total bluff",
+    "Probably bluffing","Probably bluffing",
+    "Bluff written all over it","Bluff written all over it",
+    "Pay to find out",
+    "99% bluff",
+    "Her story leaks chips",
+    "Everything screams bluff",
+    "Cards look like air",
+    "Thin value… still bluffy",
+    "she has 2 pair"
+  ];
+
+  const ball = document.getElementById('ball');
+  const ans  = document.getElementById('answer');
+  const shakeBtn = document.getElementById('shakeBtn');
+  const againBtn = document.getElementById('againBtn');
+  ans.textContent = "—";
+
+  function pick(){ return WEIGHTED[Math.floor(Math.random()*WEIGHTED.length)]; }
+
+  // Subtle “thunk + rattle” sound
+  let audioCtx;
+  function playShakeSound(){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      // Low thunk
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(120, audioCtx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(65, audioCtx.currentTime + 0.16);
+      g.gain.value = 0.17;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + 0.17);
+
+      // Tiny rattles
+      for(let k=0;k<4;k++){
+        const t0 = audioCtx.currentTime + 0.12 + k*0.1;
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.05, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+        const src = audioCtx.createBufferSource(); src.buffer = buf;
+        const gn = audioCtx.createGain(); gn.gain.value = 0.06;
+        src.connect(gn); gn.connect(audioCtx.destination);
+        src.start(t0); src.stop(t0 + 0.05);
+      }
+    }catch(e){}
+  }
+
+  let shaking = false;
+  function shake(){
+    if(shaking) return;
+    shaking = true;
+    ans.textContent = "—";
+    ans.classList.remove('reveal');
+
+    ball.classList.remove('shake'); // restart animation
+    // force reflow
+    // eslint-disable-next-line no-unused-expressions
+    ball.offsetHeight;
+    ball.classList.add('shake');
+
+    playShakeSound();
+
+    // reveal answer a bit after shake starts
+    setTimeout(()=>{
+      ans.textContent = pick();
+      ans.classList.add('reveal');
+      setTimeout(()=> shaking=false, 900);
+    }, 1700);
+  }
+  function askAgain(){
+    if(shaking) return;
+    ans.classList.remove('reveal');
+    setTimeout(()=>{
+      ans.textContent = pick();
+      ans.classList.add('reveal');
+    }, 60);
+  }
+
+  ball.addEventListener('click', shake);
+  shakeBtn.addEventListener('click', shake);
+  againBtn.addEventListener('click', askAgain);
+})();
 </script>
 </body>
 </html>
